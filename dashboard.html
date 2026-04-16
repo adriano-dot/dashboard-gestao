@@ -167,6 +167,15 @@
   .ri-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
   .ri-btn.active{background:var(--v4);border-color:var(--v4);color:#fff}
   #btn-cfg.cfg-open{background:rgba(209,0,0,.2);border-color:var(--v4)}
+
+  /* ── DATE FILTER ───────────────────────── */
+  .date-in{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500;border:1.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8);background:rgba(255,255,255,.07);font-family:inherit;outline:none;cursor:pointer;min-width:108px;height:26px}
+  .date-in::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.45;cursor:pointer}
+  .date-in:focus{border-color:var(--v4);background:rgba(209,0,0,.1)}
+  .date-in.active{border-color:rgba(255,210,0,.5);background:rgba(255,200,0,.07);color:#FFE066}
+  .date-clear{padding:2px 8px;border-radius:6px;font-size:12px;border:1.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);background:transparent;cursor:pointer;font-family:inherit;transition:all .15s;line-height:1}
+  .date-clear:hover{border-color:rgba(255,255,255,.4);color:#fff}
+  .date-sep{color:rgba(255,255,255,.35);font-size:11px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -257,6 +266,14 @@
     <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:3px;vertical-align:middle"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Período
   </span>
   <div id="period-pills" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  <span class="bar-div"></span>
+  <span class="squad-label">
+    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:3px;vertical-align:middle"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Data
+  </span>
+  <input type="date" class="date-in" id="df-from" onchange="setDateFilter()" title="De (data início)"/>
+  <span class="date-sep">—</span>
+  <input type="date" class="date-in" id="df-to" onchange="setDateFilter()" title="Até (data início)"/>
+  <button class="date-clear" id="df-clear" onclick="clearDateFilter()" title="Limpar filtro" style="display:none">✕ Limpar</button>
   <span id="squad-count" style="margin-left:auto;font-size:10px;color:rgba(255,255,255,.35)"></span>
 </div>
 
@@ -456,8 +473,43 @@
 let STATE = { loaded:false, painel2026:[], cockpit:[], oneTime:[], healthPeople:[], healthScore:[], pdsa:[], planoAcao:[], capacidade:[] };
 let ACTIVE_SQUAD = 'Todos';
 let ACTIVE_PERIOD = -1; // -1 = automático (último mês com dados)
+let DATE_FILTER = { from: null, to: null };
 const charts = {};
 let _allClients=[], _allAcoes=[];
+
+// ══════════════════════════════════════════
+// DATE FILTER
+// ══════════════════════════════════════════
+function setDateFilter() {
+  const fv = document.getElementById('df-from')?.value;
+  const tv = document.getElementById('df-to')?.value;
+  DATE_FILTER.from = fv ? new Date(fv + 'T00:00:00') : null;
+  DATE_FILTER.to   = tv ? new Date(tv + 'T23:59:59') : null;
+  const active = DATE_FILTER.from || DATE_FILTER.to;
+  document.getElementById('df-from')?.classList.toggle('active', !!DATE_FILTER.from);
+  document.getElementById('df-to')?.classList.toggle('active', !!DATE_FILTER.to);
+  const btn = document.getElementById('df-clear');
+  if (btn) btn.style.display = active ? '' : 'none';
+  if (STATE.loaded) renderAll();
+}
+
+function clearDateFilter() {
+  DATE_FILTER = { from: null, to: null };
+  const df = document.getElementById('df-from'), dt = document.getElementById('df-to');
+  if (df) { df.value = ''; df.classList.remove('active'); }
+  if (dt) { dt.value = ''; dt.classList.remove('active'); }
+  const btn = document.getElementById('df-clear');
+  if (btn) btn.style.display = 'none';
+  if (STATE.loaded) renderAll();
+}
+
+function inDateRange(d) {
+  if (!DATE_FILTER.from && !DATE_FILTER.to) return true;
+  if (!d || !(d instanceof Date) || isNaN(d)) return true;
+  if (DATE_FILTER.from && d < DATE_FILTER.from) return false;
+  if (DATE_FILTER.to   && d > DATE_FILTER.to)   return false;
+  return true;
+}
 
 // ══════════════════════════════════════════
 // SQUAD LOGIC
@@ -902,7 +954,8 @@ function renderFinanceiro() {
   const allAtivos=filterBySquad(STATE.cockpit.slice(1).filter(r=>r[7]==='Ativo'));
   const mrr=allAtivos.reduce((s,r)=>s+(typeof r[12]==='number'?r[12]:0),0);
   const otAll=STATE.oneTime.slice(2).filter(r=>r[1]&&!String(r[1]).includes('Preencha'));
-  const ot=ACTIVE_SQUAD==='Todos'?otAll:otAll.filter(r=>String(r[2]||'').trim().toLowerCase()===ACTIVE_SQUAD.toLowerCase());
+  let ot=ACTIVE_SQUAD==='Todos'?otAll:otAll.filter(r=>String(r[2]||'').trim().toLowerCase()===ACTIVE_SQUAD.toLowerCase());
+  ot=ot.filter(r=>inDateRange(r[9] instanceof Date?r[9]:null)||inDateRange(r[10] instanceof Date?r[10]:null));
   const otTotal=ot.reduce((s,r)=>s+(typeof r[7]==='number'?r[7]:0),0);
 
   document.getElementById('kpi-fin').innerHTML=[
@@ -1048,6 +1101,7 @@ function renderClientTable() {
   let rows=_allClients;
   if(sf) rows=rows.filter(r=>getLatestHS(r).status.toLowerCase().includes(sf));
   if(s) rows=rows.filter(r=>String(r[0]||'').toLowerCase().includes(s)||String(r[1]||'').toLowerCase().includes(s));
+  rows=rows.filter(r=>inDateRange(r[2] instanceof Date ? r[2] : null));
   if(!rows.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum resultado</td></tr>';return;}
   rows.forEach(r=>{
     const sq=r._squad||getClientSquad(r)||'—';
@@ -1234,7 +1288,7 @@ function renderPeople() {
   }
 
   const tb=document.getElementById('tb-ppl'); tb.innerHTML='';
-  if(pplFiltered.length){pplFiltered.forEach(r=>{tb.innerHTML+=`<tr><td><strong>${r[2]}</strong></td><td>${squadTag(String(r[6]||'').trim())}</td><td>${r[8]||'—'}</td><td>${r[7]||'—'}</td><td style="color:#9CA3AF">${fmtDate(r[5])}</td></tr>`;});}
+  if(pplFiltered.length){pplFiltered.filter(r=>inDateRange(r[5] instanceof Date?r[5]:null)).forEach(r=>{tb.innerHTML+=`<tr><td><strong>${r[2]}</strong></td><td>${squadTag(String(r[6]||'').trim())}</td><td>${r[8]||'—'}</td><td>${r[7]||'—'}</td><td style="color:#9CA3AF">${fmtDate(r[5])}</td></tr>`;});}
   else{
     const seen=new Set();
     filterBySquad(STATE.cockpit.slice(1)).forEach(r=>[{n:r[13],f:'Coordenador'},{n:r[14],f:'Account'},{n:r[15],f:'GT'},{n:r[16],f:'Designer'},{n:r[17],f:'Copy'}].filter(p=>p.n&&p.n!=='').forEach(p=>{if(!seen.has(p.n)){seen.add(p.n);const sq=STATE._personSquad?.[p.n]||'';tb.innerHTML+=`<tr><td><strong>${p.n}</strong></td><td>${squadTag(sq)}</td><td>${p.f}</td><td>—</td><td>—</td></tr>`;}}));
@@ -1273,6 +1327,7 @@ function renderAcoesTable(){
   let rows=_allAcoes;
   if(imp)rows=rows.filter(a=>String(a.impacto).trim()===imp);
   if(s)rows=rows.filter(a=>(a.fato+a.acao+a.resp+a.causas).toLowerCase().includes(s));
+  rows=rows.filter(a=>inDateRange(a.prazo instanceof Date ? a.prazo : null));
   rows=rows.slice(0,300);
   if(!rows.length){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:#9CA3AF;padding:16px">Nenhuma ação encontrada</td></tr>';return;}
   rows.forEach(a=>{
