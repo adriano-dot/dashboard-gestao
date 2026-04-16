@@ -102,6 +102,14 @@
   tr:last-child td{border-bottom:none}
   .sAtivo{color:#065F46;background:#D1FAE5;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
   .sChurn{color:#991B1B;background:#FEE2E2;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .sheet-entry{display:flex;gap:6px;align-items:center}
+  .sheet-entry .conn-in{flex:1;font-size:11px}
+  .sheet-squad{padding:6px 8px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:7px;color:#fff;font-size:11px;font-family:inherit;outline:none;cursor:pointer;min-width:110px}
+  .sheet-squad:focus{border-color:var(--v4)}
+  .sheet-squad option{background:#1F1F1F;color:#fff}
+  .cfg-lbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .hs-s{padding:1px 8px;border-radius:20px;font-size:10px;font-weight:700}
+  .hs-saudavel{color:#065F46;background:#D1FAE5}.hs-alerta{color:#92400E;background:#FEF3C7}.hs-critico{color:#991B1B;background:#FEE2E2}.hs-none{color:#6B7280;background:#F3F4F6}
   .sAviso{color:#92400E;background:#FEF3C7;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
 
   /* ── INPUTS ────────────────────────────────── */
@@ -199,28 +207,37 @@
 </div>
 
 <!-- ══════════════════════ SETTINGS PANEL ══════════════════════ -->
-<div id="settings-panel" style="display:none;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,.1);padding:14px 24px;">
-  <div style="max-width:760px;display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap">
-    <div style="flex:1;min-width:260px">
-      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Link do Google Sheets</div>
-      <input class="conn-in" id="cfg-url" style="width:100%;font-size:11px" placeholder="https://docs.google.com/spreadsheets/d/…"/>
-    </div>
-    <div>
-      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Auto-atualização</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="ri-btn active" data-mins="0" onclick="setRefresh(this)">Desligado</button>
-        <button class="ri-btn" data-mins="5" onclick="setRefresh(this)">5 min</button>
-        <button class="ri-btn" data-mins="10" onclick="setRefresh(this)">10 min</button>
-        <button class="ri-btn" data-mins="30" onclick="setRefresh(this)">30 min</button>
-        <button class="ri-btn" data-mins="60" onclick="setRefresh(this)">1 hora</button>
+<div id="settings-panel" style="display:none;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,.1);padding:16px 24px;">
+  <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;max-width:960px">
+
+    <div style="flex:1;min-width:340px">
+      <div class="cfg-lbl">Planilhas conectadas
+        <span style="font-size:9px;font-weight:400;opacity:.5;margin-left:6px;text-transform:none;letter-spacing:0">cada planilha pode representar um squad diferente</span>
       </div>
+      <div id="sheets-list" style="display:flex;flex-direction:column;gap:7px;margin-bottom:8px"></div>
+      <button class="btn btn-ghost" onclick="addSheetEntry()" style="font-size:11px;padding:5px 12px;margin-top:2px">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Adicionar planilha
+      </button>
     </div>
-    <div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div class="cfg-lbl">Auto-atualização</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="ri-btn active" data-mins="0" onclick="setRefresh(this)">Desligado</button>
+          <button class="ri-btn" data-mins="5" onclick="setRefresh(this)">5 min</button>
+          <button class="ri-btn" data-mins="10" onclick="setRefresh(this)">10 min</button>
+          <button class="ri-btn" data-mins="30" onclick="setRefresh(this)">30 min</button>
+          <button class="ri-btn" data-mins="60" onclick="setRefresh(this)">1 hora</button>
+        </div>
+      </div>
       <button class="btn btn-v4" onclick="saveSettings()" style="height:32px">
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
         Salvar &amp; Conectar
       </button>
     </div>
+
   </div>
   <div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.35);display:flex;gap:16px;align-items:center">
     <span id="cfg-status"></span>
@@ -333,18 +350,20 @@
       <div class="ccard"><div class="ctitle">Saúde Clientes (%) vs Meta</div><div class="ch"><canvas id="ch-saude-c"></canvas></div></div>
       <div class="ccard"><div class="ctitle">Projetos com ROI &gt; 1 (%)</div><div class="ch"><canvas id="ch-roi"></canvas></div></div>
     </div>
-    <div class="sec">Cockpit de Clientes</div>
+    <div class="sec">Health Score — Cockpit de Clientes</div>
     <div class="tcard">
-      <div class="thdrow">Todos os Clientes
+      <div class="thdrow">Clientes
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           <select class="si" id="f-status" onchange="renderClientTable()">
-            <option value="">Todos os Status</option>
-            <option>Ativo</option><option>Churn</option><option value="Aviso Prévio">Aviso Prévio</option>
+            <option value="">Todos os Status HS</option>
+            <option value="saud">Saudável</option>
+            <option value="alerta">Alerta</option>
+            <option value="crit">Crítico</option>
           </select>
-          <input class="si" id="s-cli" placeholder="Buscar…" oninput="renderClientTable()"/>
+          <input class="si" id="s-cli" placeholder="Buscar cliente…" oninput="renderClientTable()"/>
         </div>
       </div>
-      <div class="tw"><table><thead><tr><th>Cliente</th><th>Status</th><th>Squad</th><th>Produto</th><th>MRR</th><th>Tier</th><th>Account</th><th>NPS</th><th>MHS</th><th>Flag</th></tr></thead>
+      <div class="tw"><table><thead><tr><th>Cliente</th><th>Account</th><th>Squad</th><th>Data Início</th><th>LT</th><th>Fase</th><th>Step</th><th>Score HS</th><th>Status HS</th></tr></thead>
       <tbody id="tb-clients"></tbody></table></div>
     </div>
   </div>
@@ -434,7 +453,7 @@
 // ══════════════════════════════════════════
 // STATE & SQUAD
 // ══════════════════════════════════════════
-let STATE = { loaded:false, painel2026:[], cockpit:[], oneTime:[], healthPeople:[], pdsa:[], planoAcao:[], capacidade:[] };
+let STATE = { loaded:false, painel2026:[], cockpit:[], oneTime:[], healthPeople:[], healthScore:[], pdsa:[], planoAcao:[], capacidade:[] };
 let ACTIVE_SQUAD = 'Todos';
 let ACTIVE_PERIOD = -1; // -1 = automático (último mês com dados)
 const charts = {};
@@ -568,22 +587,90 @@ async function fetchSheet(id, name, min=5) {
   });
 }
 
-async function connectSheets(silent=false) {
-  const url = document.getElementById('gsUrl').value.trim();
-  if (!url) { if (!silent) alert('Cole o link do Google Sheets primeiro.'); return; }
-  const id = extractId(url);
-  if (!id) { if (!silent) alert('Link inválido — copie o link completo da planilha.'); return; }
-  setSt('spin','Conectando…');
-  localStorage.setItem('gsUrl', url);
+// ── Multi-sheet config helpers ──────────────────────────────
+function loadSheetConfigs() {
   try {
-    const [p2026, ck, ot, hp, pdsa, pa, cap] = await Promise.all([
-      fetchSheet(id,'Painel 2026',44), fetchSheet(id,'Cockpit Overview',43),
-      fetchSheet(id,'One Time',11), fetchSheet(id,'HealthScore People',9),
-      fetchSheet(id,'PDSA 2026',14), fetchSheet(id,'Plano de Ação',14),
-      fetchSheet(id,'Capacidade',5),
-    ]);
-    STATE = { loaded:true, painel2026:p2026, cockpit:ck, oneTime:ot, healthPeople:hp, pdsa, planoAcao:pa, capacidade:cap };
-    setSt('ok','Conectado · '+new Date().toLocaleTimeString('pt-BR'));
+    const s = localStorage.getItem('gsSheets');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  // Backwards compat: migrate old single-URL
+  const old = localStorage.getItem('gsUrl');
+  if (old) return [{ url: old, squad: '' }];
+  return [];
+}
+function saveSheetConfigs(cfgs) {
+  localStorage.setItem('gsSheets', JSON.stringify(cfgs));
+  // Keep gsUrl in sync with first entry for legacy code
+  if (cfgs[0]) localStorage.setItem('gsUrl', cfgs[0].url);
+}
+function addSheetEntry(url='', squad='') {
+  const list = document.getElementById('sheets-list');
+  if (!list) return;
+  const div = document.createElement('div');
+  div.className = 'sheet-entry';
+  div.innerHTML = `
+    <input class="conn-in sheet-url" placeholder="https://docs.google.com/spreadsheets/d/…" value="${url.replace(/"/g,'&quot;')}"/>
+    <select class="sheet-squad">
+      <option value="">Squad auto</option>
+      <option value="Alpha"${squad==='Alpha'?' selected':''}>Alpha</option>
+      <option value="Midas"${squad==='Midas'?' selected':''}>Midas</option>
+      <option value="ISaaS"${squad==='ISaaS'?' selected':''}>ISaaS</option>
+    </select>
+    <button class="btn btn-ghost" onclick="this.closest('.sheet-entry').remove()" title="Remover" style="padding:5px 9px;flex-shrink:0;font-size:13px">✕</button>`;
+  list.appendChild(div);
+}
+function renderSheetsList(cfgs) {
+  const list = document.getElementById('sheets-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!cfgs.length) cfgs = [{ url: '', squad: '' }];
+  cfgs.forEach(c => addSheetEntry(c.url, c.squad));
+}
+function readSheetEntries() {
+  return [...document.querySelectorAll('.sheet-entry')].map(el => ({
+    url: el.querySelector('.sheet-url')?.value.trim() || '',
+    squad: el.querySelector('.sheet-squad')?.value || '',
+  })).filter(c => c.url);
+}
+
+async function connectSheets(silent=false) {
+  const cfgs = loadSheetConfigs();
+  if (!cfgs.length) { if (!silent) alert('Adicione pelo menos uma planilha nas configurações (⚙).'); return; }
+  setSt('spin', 'Conectando…');
+  try {
+    const sources = await Promise.all(cfgs.map(async cfg => {
+      const id = extractId(cfg.url);
+      if (!id) return null;
+      const tag = (rows, sq) => rows.map(r => { const nr=[...r]; nr._squad=sq||cfg.squad; return nr; });
+      const [p2026, ck, ot, hp, pdsa, pa, cap, hs] = await Promise.all([
+        fetchSheet(id,'Painel 2026',44),
+        fetchSheet(id,'Cockpit Overview',43),
+        fetchSheet(id,'One Time',11),
+        fetchSheet(id,'HealthScore People',9),
+        fetchSheet(id,'PDSA 2026',14),
+        fetchSheet(id,'Plano de Ação',14),
+        fetchSheet(id,'Capacidade',5),
+        fetchSheet(id,'Health Score',91),
+      ]);
+      return { squad:cfg.squad, painel2026:p2026, cockpit:tag(ck,cfg.squad), oneTime:tag(ot,cfg.squad),
+        healthPeople:hp, pdsa, planoAcao:tag(pa,cfg.squad), capacidade:tag(cap,cfg.squad), healthScore:tag(hs,cfg.squad) };
+    }));
+    const valid = sources.filter(Boolean);
+    if (!valid.length) { setSt('err','Nenhum ID válido encontrado.'); return; }
+    // Aggregate: KPI sheets from first source; row sheets merged from all
+    STATE = {
+      loaded: true,
+      painel2026: valid[0].painel2026,
+      pdsa: valid[0].pdsa,
+      cockpit:     valid.flatMap(s=>s.cockpit),
+      oneTime:     valid.flatMap(s=>s.oneTime),
+      healthPeople:valid[0].healthPeople,
+      healthScore: valid.flatMap(s=>s.healthScore),
+      planoAcao:   valid.flatMap(s=>s.planoAcao),
+      capacidade:  valid.flatMap(s=>s.capacidade),
+    };
+    setSt('ok','Conectado · '+new Date().toLocaleTimeString('pt-BR')+
+      (valid.length>1?' ('+valid.length+' planilhas)':''));
     buildSquadMaps();
     renderAll();
   } catch(e) { setSt('err','Erro: '+e.message); console.error(e); }
@@ -609,7 +696,7 @@ function toggleSettings() {
   p.style.display = open ? 'block' : 'none';
   btn.classList.toggle('cfg-open', open);
   if (open) {
-    document.getElementById('cfg-url').value = localStorage.getItem('gsUrl') || '';
+    renderSheetsList(loadSheetConfigs());
     syncRefreshButtons(_refreshMins);
     updateCfgStatus();
   }
@@ -627,14 +714,10 @@ function setRefresh(btn) {
 }
 
 function saveSettings() {
-  const url = document.getElementById('cfg-url').value.trim();
+  const cfgs = readSheetEntries();
+  if (cfgs.length) { saveSheetConfigs(cfgs); document.getElementById('gsUrl').value = cfgs[0].url; }
   const minsBtn = document.querySelector('.ri-btn.active');
   const mins = minsBtn ? parseInt(minsBtn.dataset.mins) : 0;
-
-  if (url) {
-    document.getElementById('gsUrl').value = url;
-    localStorage.setItem('gsUrl', url);
-  }
   localStorage.setItem('gsRefreshMins', mins);
   _refreshMins = mins;
   startAutoRefresh(mins);
@@ -677,11 +760,11 @@ function updateCfgStatus() {
 
 window.addEventListener('DOMContentLoaded', () => {
   buildPeriodPills();
-  const savedUrl = localStorage.getItem('gsUrl');
+  const cfgs = loadSheetConfigs();
   const savedMins = parseInt(localStorage.getItem('gsRefreshMins') || '0');
   _refreshMins = savedMins;
-  if (savedUrl) {
-    document.getElementById('gsUrl').value = savedUrl;
+  if (cfgs.length) {
+    document.getElementById('gsUrl').value = cfgs[0].url;
     connectSheets(true);
   }
   if (savedMins > 0) startAutoRefresh(savedMins);
@@ -696,6 +779,7 @@ const fmt=(v,t='cur')=>{
   if(t==='pct')return(Number(v)*100).toFixed(1)+'%';
   return v;
 };
+
 const pct=(r,m)=>m&&m!==0?Math.min(200,Math.round(r/m*100)):0;
 const pClr=p=>p>=90?'#059669':p>=60?'#D97706':'#DC2626';
 const bCls=p=>p>=90?'g':p>=60?'y':'r';
@@ -882,18 +966,48 @@ function renderFinanceiro() {
 // ══════════════════════════════════════════
 // CLIENTES
 // ══════════════════════════════════════════
+// Returns latest non-zero Health Score {score, status} from the 4 periods
+function getLatestHS(r) {
+  const periods=[{s:71,st:72},{s:51,st:52},{s:30,st:31},{s:9,st:10}];
+  for(const p of periods){
+    if(typeof r[p.s]==='number'&&r[p.s]>0) return{score:r[p.s],status:String(r[p.st]||'')};
+  }
+  return{score:null,status:''};
+}
+function hsBadge(status){
+  const lc=status.toLowerCase();
+  const cls=lc.includes('saud')?'hs-saudavel':lc.includes('alerta')?'hs-alerta':lc.includes('crít')||lc.includes('crit')?'hs-critico':'hs-none';
+  return status?`<span class="hs-s ${cls}">${status}</span>`:'<span class="hs-s hs-none">—</span>';
+}
 function renderClientes() {
-  const ck=filterBySquad(STATE.cockpit.slice(1));
-  _allClients=ck.filter(r=>r[6]);
-  const ativos=ck.filter(r=>r[7]==='Ativo');
+  // Use Health Score sheet (rows 3+ are data; rows 0-2 are headers)
+  const hsAll = filterBySquad(STATE.healthScore.slice(3).filter(r=>r[0]&&String(r[0]).trim()));
+  _allClients = hsAll;
+
+  // KPI counts from HS data (use cockpit fallback for status if available)
+  const ck = STATE.cockpit.slice(1).filter(r=>r[6]);
+  const ativos = ck.length ? ck.filter(r=>r[7]==='Ativo') : hsAll;
+  const churnCount = ck.filter(r=>r[7]==='Churn').length;
+  const avisoCount = ck.filter(r=>r[7]==='Aviso Prévio').length;
   const mi=activeMi(), sc=getKPI('saudeC',mi), roi=getKPI('roi',mi);
   const npsV=ativos.map(r=>r[36]).filter(v=>typeof v==='number');
   const npsAvg=npsV.length?(npsV.reduce((s,v)=>s+v,0)/npsV.length).toFixed(1):'—';
   const prom=npsV.filter(v=>v>=9).length, det=npsV.filter(v=>v<=6).length;
   const npsS=npsV.length?Math.round((prom-det)/npsV.length*100):'—';
 
+  // HS stats
+  const hsScores = hsAll.map(r=>getLatestHS(r)).filter(h=>h.score!==null);
+  const hsAvg = hsScores.length?(hsScores.reduce((s,h)=>s+h.score,0)/hsScores.length).toFixed(1):'—';
+  const hsSaud = hsScores.filter(h=>h.status.toLowerCase().includes('saud')).length;
+  const hsAlert = hsScores.filter(h=>h.status.toLowerCase().includes('alerta')).length;
+  const hsCrit = hsScores.filter(h=>h.status.toLowerCase().includes('crít')||h.status.toLowerCase().includes('crit')).length;
+
   document.getElementById('kpi-cli').innerHTML=[
-    kcard('Clientes Ativos',ativos.length,`Churn: ${ck.filter(r=>r[7]==='Churn').length} | Aviso: ${ck.filter(r=>r[7]==='Aviso Prévio').length}`,badge('g','✓ Ativos')),
+    kcard('Clientes HS',hsAll.length,`Churn: ${churnCount} | Aviso: ${avisoCount}`,badge('g','✓ Ativos')),
+    kcard('HS Médio',hsAvg,hsScores.length+' avaliados',badge(parseFloat(hsAvg)>=7?'g':parseFloat(hsAvg)>=5?'y':'r',parseFloat(hsAvg)>=7?'Saudável':parseFloat(hsAvg)>=5?'Alerta':'Crítico')),
+    kcard('Saudável 🟢',hsSaud,'Clientes saudáveis',badge('g',hsSaud+' clientes')),
+    kcard('Alerta 🟡',hsAlert,'Requer atenção',badge('y',hsAlert+' clientes')),
+    kcard('Crítico 🔴',hsCrit,'Risco de churn',badge('r',hsCrit+' clientes')),
     kcard('NPS Médio',npsAvg,npsV.length+' respostas',badge(npsAvg>=9?'g':npsAvg>=7?'y':'r',npsAvg>=9?'Excelente':npsAvg>=7?'Bom':'Atenção')),
     kcard('NPS Score',npsS,'Promotores − Detratores',badge(npsS>=50?'g':npsS>=0?'y':'r',npsS>=50?'Excelente':npsS>=0?'Bom':'Crítico')),
     kprog('Saúde Clientes',(sc.real*100).toFixed(0)+'%','Meta: '+(sc.meta*100).toFixed(0)+'%',pct(sc.real,sc.meta)),
@@ -927,20 +1041,30 @@ function renderClientes() {
 }
 
 function renderClientTable() {
-  const sf=document.getElementById('f-status')?.value||'', s=(document.getElementById('s-cli')?.value||'').toLowerCase();
+  const s=(document.getElementById('s-cli')?.value||'').toLowerCase();
   const tb=document.getElementById('tb-clients'); if(!tb)return;
   tb.innerHTML='';
+  const sf=document.getElementById('f-status')?.value||'';
   let rows=_allClients;
-  if(sf)rows=rows.filter(r=>r[7]===sf);
-  if(s)rows=rows.filter(r=>(r[6]||'').toLowerCase().includes(s)||(r[9]||'').toLowerCase().includes(s));
-  if(!rows.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum resultado</td></tr>';return;}
+  if(sf) rows=rows.filter(r=>getLatestHS(r).status.toLowerCase().includes(sf));
+  if(s) rows=rows.filter(r=>String(r[0]||'').toLowerCase().includes(s)||String(r[1]||'').toLowerCase().includes(s));
+  if(!rows.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum resultado</td></tr>';return;}
   rows.forEach(r=>{
-    const st=r[7]||'',sh=st==='Ativo'?'<span class="sAtivo">Ativo</span>':st==='Churn'?'<span class="sChurn">Churn</span>':st==='Aviso Prévio'?'<span class="sAviso">Aviso Prévio</span>':st;
-    const sq=getClientSquad(r);
-    const f=r[19]||'',fh=f==='Red'?'🔴':f==='Yellow'?'🟡':f==='Green'?'🟢':'—';
-    const nv=typeof r[36]==='number'?r[36]:'—';
-    const mhs=r[35]||'—',mc=mhs==='Muito Desapontado'?'color:#991B1B':mhs==='Desapontado'?'color:#D97706':'';
-    tb.innerHTML+=`<tr><td><strong>${r[6]||'—'}</strong></td><td>${sh}</td><td>${squadTag(sq)}</td><td>${r[9]||'—'}</td><td>${typeof r[12]==='number'?fmt(r[12]):'—'}</td><td>${r[23]||'—'}</td><td>${r[14]||'—'}</td><td>${nv}</td><td style="${mc}">${mhs}</td><td>${fh}</td></tr>`;
+    const sq=r._squad||getClientSquad(r)||'—';
+    const hs=getLatestHS(r);
+    const scoreColor=hs.score===null?'color:#9CA3AF':hs.score>=7?'color:#059669':hs.score>=5?'color:#D97706':'color:#DC2626';
+    const scoreDisp=hs.score!==null?`<span style="font-weight:700;${scoreColor}">${hs.score.toFixed(1)}</span>`:'—';
+    tb.innerHTML+=`<tr>
+      <td><strong>${r[0]||'—'}</strong></td>
+      <td style="color:var(--muted)">${r[1]||'—'}</td>
+      <td>${squadTag(sq)}</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(r[2])}</td>
+      <td style="text-align:center;color:var(--muted)">${r[3]?r[3]+'m':'—'}</td>
+      <td style="font-size:11px">${r[4]||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${r[6]||'—'}</td>
+      <td style="text-align:center">${scoreDisp}</td>
+      <td>${hsBadge(hs.status)}</td>
+    </tr>`;
   });
 }
 
