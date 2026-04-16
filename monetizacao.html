@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>V4 Company — Monetização 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  :root{
+    --v4:#D10000;--v4d:#A80000;--v4l:#FFF0F0;
+    --dark:#0A0A0A;--dark2:#161616;
+    --bg:#F4F4F5;--card:#fff;--border:#E5E7EB;
+    --text:#111;--muted:#6B7280;
+    --ok:#059669;--err:#DC2626;--warn:#D97706;
+    --rec:#0891B2;--ot:#7C3AED;--ee:#059669;
+    --ganho-c:rgba(5,150,105,.75);--perdido-c:rgba(220,38,38,.7);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+
+  /* HEADER */
+  .hdr{background:var(--dark);color:#fff;padding:0 24px;display:flex;align-items:stretch;min-height:56px;border-bottom:3px solid var(--v4)}
+  .hdr-brand{display:flex;align-items:center;gap:12px;padding:10px 20px 10px 0;border-right:1px solid rgba(255,255,255,.1);margin-right:20px}
+  .v4-logo{width:36px;height:36px;background:var(--v4);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+  .hdr-title{font-size:14px;font-weight:700;line-height:1.2}
+  .hdr-sub{font-size:11px;opacity:.55;margin-top:2px}
+  .hdr-nav{display:flex;align-items:center;gap:2px;padding:10px 16px 10px 0;border-right:1px solid rgba(255,255,255,.1);margin-right:16px}
+  .nav-link{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-decoration:none;transition:all .15s;border:1.5px solid transparent;white-space:nowrap;letter-spacing:.2px}
+  .nav-link:hover{color:#fff;background:rgba(255,255,255,.08)}
+  .nav-link.active{color:#fff;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
+  .nav-link svg{opacity:.7}
+  .nav-link.active svg{opacity:1}
+  .hdr-conn{flex:1;display:flex;align-items:center;gap:8px;padding:10px 0}
+  .conn-in{flex:1;padding:7px 12px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:7px;color:#fff;font-size:12px;font-family:inherit;outline:none;min-width:0}
+  .conn-in::placeholder{color:rgba(255,255,255,.4)}
+  .conn-in:focus{border-color:var(--v4)}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;border:none;font-family:inherit;transition:all .15s;white-space:nowrap}
+  .btn-v4{background:var(--v4);color:#fff}.btn-v4:hover{background:var(--v4d)}
+  .btn-ghost{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);color:#fff}.btn-ghost:hover{background:rgba(255,255,255,.18)}
+  .status-row{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.6);white-space:nowrap}
+  .dot{width:7px;height:7px;border-radius:50%;background:#4B5563}
+  .dot.ok{background:#34D399}.dot.err{background:#F87171}.dot.spin{background:var(--v4);animation:blink 1s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* FILTER BAR */
+  .fbar{background:var(--dark2);border-bottom:1px solid rgba(255,255,255,.06);padding:8px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .flbl{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-right:4px}
+  .fpill{padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.55);background:transparent;transition:all .15s;font-family:inherit}
+  .fpill:hover{border-color:rgba(255,255,255,.4);color:#fff}
+  .fpill.fa{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)}
+  .fpill.fa-midas{background:rgba(209,0,0,.25);color:#FF9090;border-color:var(--v4)}
+  .fpill.fa-alpha{background:rgba(124,58,237,.25);color:#A78BFA;border-color:#7C3AED}
+  .fpill.fa-isaas{background:rgba(8,145,178,.25);color:#67E8F9;border-color:#0891B2}
+  .fdot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+  .fd-todos{background:rgba(255,255,255,.4)}.fd-midas{background:var(--v4)}.fd-alpha{background:#7C3AED}.fd-isaas{background:#0891B2}
+  .bar-div{width:1px;height:18px;background:rgba(255,255,255,.12);margin:0 6px;flex-shrink:0}
+
+  /* TABS */
+  .tabs{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:2px;overflow-x:auto}
+  .tab{padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
+  .tab:hover{color:var(--v4)}
+  .tab.active{color:var(--v4);border-bottom-color:var(--v4);font-weight:700}
+
+  /* MAIN */
+  .main{padding:18px 24px;max-width:1600px;margin:0 auto}
+  .panel{display:none}.panel.active{display:block}
+  .sec{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:18px 0 10px}
+
+  /* KPI CARDS */
+  .kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+  .kcard{background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid var(--border)}
+  .kcard:hover{box-shadow:0 2px 12px rgba(0,0,0,.07)}
+  .klbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:5px}
+  .kval{font-size:24px;font-weight:800;color:var(--text);line-height:1.1}
+  .kmeta{font-size:11px;color:var(--muted);margin-top:3px}
+  .kbadge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:6px}
+  .g{background:#D1FAE5;color:#065F46}.r{background:#FEE2E2;color:#991B1B}
+  .y{background:#FEF3C7;color:#92400E}.b{background:#DBEAFE;color:#1E40AF}
+  .p{background:#EDE9FE;color:#5B21B6}.c{background:#CFFAFE;color:#155E75}
+  .gr{background:#F3F4F6;color:#374151}
+  .pbar-bg{background:#F3F4F6;border-radius:20px;height:5px;overflow:hidden;margin-top:7px}
+  .pbar{height:100%;border-radius:20px;transition:width .6s}
+  .plbl{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* CHARTS */
+  .cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px;margin-bottom:18px}
+  .ccard{background:var(--card);border-radius:10px;padding:16px 18px;border:1px solid var(--border)}
+  .ccard.full{grid-column:1/-1}
+  .ctitle{font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .ch{position:relative;height:220px}
+  .ch.t{height:280px}.ch.sm{height:160px}
+
+  /* TABLES */
+  .tcard{background:var(--card);border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:18px}
+  .thdrow{padding:12px 16px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .tw{overflow-x:auto;max-height:420px;overflow-y:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{background:#FAFAFA;padding:7px 11px;text-align:left;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1;white-space:nowrap}
+  td{padding:7px 11px;border-bottom:1px solid #F9FAFB;vertical-align:middle}
+  tr:hover td{background:#FAFAFA}
+  tr:last-child td{border-bottom:none}
+
+  /* INPUTS */
+  .si{padding:5px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:11px;outline:none;font-family:inherit}
+  .si:focus{border-color:var(--v4)}
+
+  /* PIPELINE FUNNEL */
+  .funnel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+  .fstage{background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid var(--border);text-align:center;position:relative;overflow:hidden}
+  .fstage::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+  .fs-ganho::before{background:#059669}.fs-follow::before{background:#D97706}
+  .fs-negoc::before{background:#0891B2}.fs-proposta::before{background:#7C3AED}
+  .fs-reuniao::before{background:#F59E0B}.fs-account::before{background:#6B7280}
+  .fs-levantada::before{background:#9CA3AF}.fs-perdido::before{background:#DC2626}
+  .fn{font-size:28px;font-weight:800;line-height:1.1}
+  .fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-top:4px}
+  .fv{font-size:11px;color:var(--muted);margin-top:2px}
+
+  /* TEMPERATURE BADGE */
+  .temp-vendido{color:#065F46;background:#D1FAE5;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+  .temp-quente{color:#92400E;background:#FEF3C7;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .temp-morno{color:#1E40AF;background:#DBEAFE;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .temp-frio{color:#374151;background:#F3F4F6;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .temp-perdido{color:#991B1B;background:#FEE2E2;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+
+  /* STATUS BADGE */
+  .st-g{color:#065F46;background:#D1FAE5;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .st-p{color:#991B1B;background:#FEE2E2;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .st-y{color:#92400E;background:#FEF3C7;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .st-b{color:#1E40AF;background:#DBEAFE;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .st-v{color:#5B21B6;background:#EDE9FE;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .st-gr{color:#374151;background:#F3F4F6;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+
+  /* SQUAD TAG */
+  .sq-midas{background:rgba(209,0,0,.12);color:#991B1B;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .sq-alpha{background:rgba(124,58,237,.12);color:#5B21B6;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .sq-isaas{background:rgba(8,145,178,.12);color:#155E75;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .sq-none{background:#F3F4F6;color:#6B7280;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700}
+
+  /* PROGRESS STEPS */
+  .steps{display:flex;gap:4px;margin-top:4px}
+  .step-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+  .step-ok{background:#059669}.step-no{background:#E5E7EB}.step-na{background:#F3F4F6;border:1px dashed #D1D5DB}
+
+  /* EMPTY */
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty .ico{font-size:44px;margin-bottom:14px}
+  .empty h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px}
+  .empty p{font-size:12px;max-width:360px;margin:0 auto 16px;line-height:1.7}
+
+  /* TWOC */
+  .twoc{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+  .threc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px}
+
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:#F1F1F1}
+  ::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:3px}
+  @media(max-width:768px){.cgrid,.twoc,.threc,.funnel-grid{grid-template-columns:1fr}.kgrid{grid-template-columns:repeat(2,1fr)}.hdr-conn{flex-direction:column;align-items:stretch}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-brand">
+    <div class="v4-logo">V4</div>
+    <div>
+      <div class="hdr-title">Monetização 2026</div>
+      <div class="hdr-sub">Muniz &amp; CO · Dashboard Comercial</div>
+    </div>
+  </div>
+  <div class="hdr-nav">
+    <a class="nav-link" href="/">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Gestão
+    </a>
+    <a class="nav-link active" href="/monetizacao.html">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Monetização
+    </a>
+  </div>
+  <div class="hdr-conn">
+    <input class="conn-in" id="gsUrl" style="display:none"/>
+    <button class="btn btn-ghost" onclick="connect(true)" title="Atualizar">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+    </button>
+    <button class="btn btn-ghost" onclick="toggleCfg()" title="Configurações" id="btn-cfg">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <div class="status-row"><span class="dot" id="sDot"></span><span id="sTxt">Desconectado</span></div>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div id="cfg-panel" style="display:none;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,.1);padding:14px 24px;">
+  <div style="max-width:700px;display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px">
+      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Link do Google Sheets — Monetização 2026</div>
+      <input class="conn-in" id="cfg-url" style="width:100%;font-size:11px" placeholder="https://docs.google.com/spreadsheets/d/…"/>
+    </div>
+    <button class="btn btn-v4" onclick="saveCfg()" style="height:32px;white-space:nowrap">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Salvar &amp; Conectar
+    </button>
+  </div>
+  <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.35)" id="cfg-status-mon"></div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="fbar">
+  <span class="flbl">Squad</span>
+  <button class="fpill fa" data-sq="Todos" onclick="setSq(this)"><span class="fdot fd-todos"></span>Todos</button>
+  <button class="fpill" data-sq="Alpha" onclick="setSq(this)"><span class="fdot fd-alpha"></span>Alpha</button>
+  <button class="fpill" data-sq="Midas" onclick="setSq(this)"><span class="fdot fd-midas"></span>Midas</button>
+  <button class="fpill" data-sq="ISaaS" onclick="setSq(this)"><span class="fdot fd-isaas"></span>ISaaS</button>
+  <span class="bar-div"></span>
+  <span class="flbl">Escopo</span>
+  <button class="fpill fa" data-esc="Todos" onclick="setEsc(this)">Todos</button>
+  <button class="fpill" data-esc="Recorrente" onclick="setEsc(this)">Recorrente</button>
+  <button class="fpill" data-esc="Onetime" onclick="setEsc(this)">One Time</button>
+  <span id="pipe-count" style="margin-left:auto;font-size:10px;color:rgba(255,255,255,.35)"></span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-tab="overview">Visão Geral</div>
+  <div class="tab" data-tab="pipeline">Pipeline</div>
+  <div class="tab" data-tab="metas">Metas 2026</div>
+  <div class="tab" data-tab="forecast">Forecast</div>
+  <div class="tab" data-tab="eeec">E.E / E.C</div>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════ VISÃO GERAL ═══════════════════ -->
+<div id="panel-overview" class="panel active">
+  <div id="ov-empty" class="empty">
+    <div class="ico">💰</div>
+    <h3>Conecte ao Google Sheets</h3>
+    <p>Cole o link da planilha Monetização 2026 no campo acima e clique em <strong style="color:var(--v4)">Conectar</strong>.</p>
+  </div>
+  <div id="ov-content" style="display:none">
+    <div class="sec">KPIs — Último Mês com Dados</div>
+    <div class="kgrid" id="kpi-ov"></div>
+    <div class="cgrid">
+      <div class="ccard full"><div class="ctitle">Contratos Vendidos vs Meta Mensal (R$)</div><div class="ch t"><canvas id="ch-vendas"></canvas></div></div>
+    </div>
+    <div class="twoc">
+      <div class="ccard"><div class="ctitle">Recorrente vs One Time — Ganho Mensal</div><div class="ch"><canvas id="ch-recot"></canvas></div></div>
+      <div class="ccard"><div class="ctitle">Taxa de Monetização da Carteira (%)</div><div class="ch"><canvas id="ch-taxa"></canvas></div></div>
+    </div>
+    <div class="sec">E.E / E.C — Frente de Monetização</div>
+    <div class="kgrid" id="kpi-ee"></div>
+    <div class="twoc">
+      <div class="ccard"><div class="ctitle">Valor Monetizado via E.E (R$)</div><div class="ch"><canvas id="ch-ee-val"></canvas></div></div>
+      <div class="ccard"><div class="ctitle">Clientes Monetizados E.E vs Aquisições</div><div class="ch"><canvas id="ch-ee-cli"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PIPELINE ═══════════════════ -->
+<div id="panel-pipeline" class="panel">
+  <div id="pipe-empty" class="empty"><div class="ico">🔥</div><h3>Conecte ao Google Sheets</h3></div>
+  <div id="pipe-content" style="display:none">
+    <div class="sec">Funil Comercial</div>
+    <div class="funnel-grid" id="funnel-cards"></div>
+    <div class="twoc">
+      <div class="ccard"><div class="ctitle">Oportunidades por Status</div><div class="ch"><canvas id="ch-pipe-st"></canvas></div></div>
+      <div class="ccard"><div class="ctitle">Temperatura do Pipeline</div><div class="ch"><canvas id="ch-pipe-temp"></canvas></div></div>
+    </div>
+    <div class="sec">Oportunidades</div>
+    <div class="tcard">
+      <div class="thdrow">Pipeline Completo
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select class="si" id="f-pipe-status" onchange="renderPipeTable()">
+            <option value="">Todos os Status</option>
+            <option>Ganho</option><option>Em Follow</option><option>Em Negociação</option>
+            <option>Proposta Enviada</option><option>Reunião Realizada</option>
+            <option>Account Planning</option><option>Oportunidade Levantada</option><option>Perdido</option>
+          </select>
+          <select class="si" id="f-pipe-temp" onchange="renderPipeTable()">
+            <option value="">Temperatura</option>
+            <option>Vendido</option><option>Quente</option><option>Morno</option><option>Frio</option><option>Perdido</option>
+          </select>
+          <input class="si" id="s-pipe" placeholder="Buscar empresa…" oninput="renderPipeTable()"/>
+        </div>
+      </div>
+      <div class="tw"><table>
+        <thead><tr><th>Empresa</th><th>Squad</th><th>Oportunidade</th><th>Escopo</th><th>Fee</th><th>Investidor</th><th>Identificação</th><th>Status</th><th>Temperatura</th></tr></thead>
+        <tbody id="tb-pipe"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ METAS ═══════════════════ -->
+<div id="panel-metas" class="panel">
+  <div id="metas-empty" class="empty"><div class="ico">🎯</div><h3>Conecte ao Google Sheets</h3></div>
+  <div id="metas-content" style="display:none">
+    <div class="sec">Metas Anuais 2026</div>
+    <div class="kgrid" id="kpi-metas"></div>
+    <div class="cgrid">
+      <div class="ccard">
+        <div class="ctitle">Recorrente — Meta vs Ganho (R$)</div>
+        <div class="ch t"><canvas id="ch-rec-meta"></canvas></div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle">One Time — Meta vs Ganho (R$)</div>
+        <div class="ch t"><canvas id="ch-ot-meta"></canvas></div>
+      </div>
+    </div>
+    <div class="sec">Growth Class</div>
+    <div class="kgrid" id="kpi-gc"></div>
+    <div class="ccard full" style="margin-bottom:18px">
+      <div class="ctitle">GC — Novos Clientes vs Growth Class Realizado</div>
+      <div class="ch sm"><canvas id="ch-gc"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ FORECAST ═══════════════════ -->
+<div id="panel-forecast" class="panel">
+  <div id="fore-empty" class="empty"><div class="ico">📈</div><h3>Conecte ao Google Sheets</h3></div>
+  <div id="fore-content" style="display:none">
+    <div class="sec">Planejamento Financeiro 2026</div>
+    <div class="kgrid" id="kpi-fore"></div>
+    <div class="cgrid">
+      <div class="ccard full">
+        <div class="ctitle">MRR Projetado vs Receita Líquida (R$)</div>
+        <div class="ch t"><canvas id="ch-mrr"></canvas></div>
+      </div>
+    </div>
+    <div class="twoc">
+      <div class="ccard"><div class="ctitle">Churn Projetado (clientes/mês)</div><div class="ch sm"><canvas id="ch-churn"></canvas></div></div>
+      <div class="ccard"><div class="ctitle">Novas Vendas — Recorrente vs One Time</div><div class="ch sm"><canvas id="ch-novos"></canvas></div></div>
+    </div>
+    <div class="sec">Breakdown Financeiro Mensal</div>
+    <div class="tcard">
+      <div class="thdrow">Projeção Detalhada</div>
+      <div class="tw"><table>
+        <thead><tr><th>Métrica</th><th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th></tr></thead>
+        <tbody id="tb-fore"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ E.E / E.C ═══════════════════ -->
+<div id="panel-eeec" class="panel">
+  <div id="ee-empty" class="empty"><div class="ico">🏗️</div><h3>Conecte ao Google Sheets</h3></div>
+  <div id="ee-content" style="display:none">
+    <div class="sec">Estruturação Estratégica / Comercial</div>
+    <div class="kgrid" id="kpi-ee2"></div>
+    <div class="sec">Clientes em Estruturação</div>
+    <div class="tcard">
+      <div class="thdrow">E.E / E.C Review
+        <input class="si" id="s-ee" placeholder="Buscar cliente…" oninput="filterEE()"/>
+      </div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th>Cliente</th><th>Contrato</th><th>Squad</th><th>Responsável</th><th>Início</th><th>Fim</th>
+          <th style="color:#7C3AED">Saber</th><th style="color:#0891B2">Ter</th><th style="color:#059669">Executar</th><th>Progresso</th>
+        </tr></thead>
+        <tbody id="tb-ee"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const GS_DEFAULT = '15Um69P-ZwUKNSEDEgHv64pOCVaFc9t6mKsQlaYEchk8';
+let STATE = { loaded:false, dashboard:[], metas:[], pipe:[], forecast:[], eeec:[] };
+let SQ = 'Todos', ESC = 'Todos';
+const charts = {};
+
+// ═══════════════════════════════════════
+// FILTERS
+// ═══════════════════════════════════════
+function setSq(btn) {
+  SQ = btn.dataset.sq;
+  document.querySelectorAll('[data-sq]').forEach(b => {
+    b.className = 'fpill' + (b.dataset.sq===SQ ? (' fa'+(SQ==='Todos'?'':'-'+SQ.toLowerCase())) : '');
+  });
+  if (STATE.loaded) renderAll();
+}
+function setEsc(btn) {
+  ESC = btn.dataset.esc;
+  document.querySelectorAll('[data-esc]').forEach(b => {
+    b.className = 'fpill' + (b.dataset.esc===ESC ? ' fa' : '');
+  });
+  if (STATE.loaded) renderAll();
+}
+function filterPipe(rows) {
+  return rows.filter(r => {
+    const sq = String(r[8]||'').trim();
+    const esc = String(r[9]||'').trim();
+    const sqOk = SQ==='Todos' || sq.toLowerCase()===SQ.toLowerCase();
+    const escOk = ESC==='Todos' || esc.toLowerCase().includes(ESC.toLowerCase().replace('onetime','one'));
+    return sqOk && escOk;
+  });
+}
+
+// ═══════════════════════════════════════
+// GOOGLE SHEETS FETCH
+// ═══════════════════════════════════════
+function extractId(url) {
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : url.trim();
+}
+async function fetchSheet(id, name, min=5) {
+  const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(name)}&headers=0`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const txt = await res.text();
+  const m = txt.match(/setResponse\(([\s\S]+?)\);\s*$/);
+  if (!m) return [];
+  try {
+    const j = JSON.parse(m[1]);
+    if (j.status==='error' || !j.table?.rows) return [];
+    const nc = Math.max(min, j.table.cols?.length||0);
+    return j.table.rows.map(r => {
+      const cells = Array(nc).fill('');
+      (r.c||[]).forEach((c,i) => {
+        if (i >= cells.length) cells.push('');
+        if (c?.v != null) {
+          let v = c.v;
+          if (typeof v==='string' && v.startsWith('Date(')) {
+            const p = v.slice(5,-1).split(',').map(Number);
+            v = new Date(p[0],p[1],p[2]);
+          }
+          cells[i] = v;
+        }
+      });
+      return cells;
+    });
+  } catch { return []; }
+}
+
+async function connect(silent=false) {
+  let url = document.getElementById('gsUrl').value.trim();
+  if (!url) { if (!silent) alert('Cole o link do Google Sheets.'); return; }
+  const id = extractId(url);
+  setSt('spin','Conectando…');
+  localStorage.setItem('mon_gsUrl', url);
+  try {
+    const [dash, metas, pipe, fore, ee] = await Promise.all([
+      fetchSheet(id,'DASHBOARD',15),
+      fetchSheet(id,'METAS',14),
+      fetchSheet(id,'PIPE',15),
+      fetchSheet(id,'FORECAST',16),
+      fetchSheet(id,'E.E l E.C REVIEW',12),
+    ]);
+    STATE = { loaded:true, dashboard:dash, metas, pipe, forecast:fore, eeec:ee };
+    setSt('ok','Conectado · '+new Date().toLocaleTimeString('pt-BR'));
+    renderAll();
+  } catch(e) { setSt('err','Erro: '+e.message); console.error(e); }
+}
+
+function setSt(s,t) {
+  document.getElementById('sDot').className='dot '+s;
+  document.getElementById('sTxt').textContent=t;
+}
+
+function toggleCfg() {
+  const p = document.getElementById('cfg-panel');
+  const open = p.style.display === 'none';
+  p.style.display = open ? 'block' : 'none';
+  document.getElementById('btn-cfg').style.background = open ? 'rgba(255,255,255,.15)' : '';
+  if (open) {
+    const saved = localStorage.getItem('mon_gsUrl') || 'https://docs.google.com/spreadsheets/d/'+GS_DEFAULT;
+    document.getElementById('cfg-url').value = saved;
+  }
+}
+
+function saveCfg() {
+  const url = document.getElementById('cfg-url').value.trim();
+  if (!url) return;
+  document.getElementById('gsUrl').value = url;
+  localStorage.setItem('mon_gsUrl', url);
+  document.getElementById('cfg-status-mon').textContent = 'Conectando…';
+  connect(false);
+  document.getElementById('cfg-panel').style.display = 'none';
+  document.getElementById('btn-cfg').style.background = '';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('mon_gsUrl') || 'https://docs.google.com/spreadsheets/d/'+GS_DEFAULT;
+  document.getElementById('gsUrl').value = saved;
+  connect(true);
+});
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+const R = (v,t='cur') => {
+  if (v===null||v===undefined||v===''||v===0&&t==='cur') return t==='cur'?'R$ 0':'—';
+  if (t==='cur') return 'R$\u00a0'+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  if (t==='pct') return (Number(v)*100).toFixed(1)+'%';
+  if (t==='n') return Number(v).toLocaleString('pt-BR');
+  return v;
+};
+const fmtCur = v => R(v,'cur');
+const pct = (r,m) => m&&m!==0 ? Math.min(200,Math.round(r/m*100)) : 0;
+const pClr = p => p>=90?'#059669':p>=60?'#D97706':'#DC2626';
+const bCls = p => p>=90?'g':p>=60?'y':'r';
+const trunc = (s,n=60) => s&&String(s).length>n ? String(s).slice(0,n)+'…' : (s||'—');
+const fmtDate = v => { if(!v)return'—'; if(v instanceof Date)return v.toLocaleDateString('pt-BR'); return v; };
+
+function mkChart(id,cfg) {
+  if(charts[id])charts[id].destroy();
+  const el=document.getElementById(id); if(!el)return;
+  charts[id]=new Chart(el,cfg);
+}
+function kcard(l,v,m,b='') { return`<div class="kcard"><div class="klbl">${l}</div><div class="kval">${v}</div><div class="kmeta">${m}</div>${b}</div>`; }
+function kprog(l,v,m,p) {
+  const c=pClr(p),bCl=bCls(p);
+  return`<div class="kcard"><div class="klbl">${l}</div><div class="kval">${v}</div><div class="kmeta">${m}</div><div class="pbar-bg"><div class="pbar" style="width:${Math.min(100,p)}%;background:${c}"></div></div><div class="plbl">${p}% da meta</div></div>`;
+}
+function badge(cls,txt) { return`<span class="kbadge ${cls}">${txt}</span>`; }
+
+function normStatus(s) {
+  s = String(s||'').trim().toLowerCase();
+  if (s==='ganho'||s==='vendido'||s.includes('ganho')) return 'Ganho';
+  if (s.includes('perdido')) return 'Perdido';
+  if (s.includes('negoci')) return 'Em Negociação';
+  if (s.includes('follow')) return 'Em Follow';
+  if (s.includes('proposta')) return 'Proposta Enviada';
+  if (s.includes('reunião')||s.includes('reuniao')) return 'Reunião Realizada';
+  if (s.includes('account')||s.includes('planning')) return 'Account Planning';
+  if (s.includes('oportunidade')||s.includes('levantada')) return 'Oportunidade Levantada';
+  return s||'—';
+}
+function normTemp(t) {
+  t = String(t||'').trim().toLowerCase();
+  if (t==='vendido'||t==='ganho') return 'Vendido';
+  if (t==='quente') return 'Quente';
+  if (t==='morno') return 'Morno';
+  if (t==='frio') return 'Frio';
+  if (t==='perdido') return 'Perdido';
+  return t||'—';
+}
+function statusBadge(s) {
+  const n = normStatus(s);
+  const cls = n==='Ganho'?'st-g':n==='Perdido'?'st-p':n==='Em Negociação'?'st-b':n==='Proposta Enviada'?'st-v':n==='Em Follow'?'st-y':'st-gr';
+  return `<span class="${cls}">${n}</span>`;
+}
+function tempBadge(t) {
+  const n = normTemp(t);
+  const cls = n==='Vendido'?'temp-vendido':n==='Quente'?'temp-quente':n==='Morno'?'temp-morno':n==='Frio'?'temp-frio':'temp-perdido';
+  return `<span class="${cls}">${n}</span>`;
+}
+function sqTag(sq) {
+  sq = String(sq||'').trim();
+  if (!sq) return '<span class="sq-none">—</span>';
+  const lc = sq.toLowerCase();
+  const cls = lc==='alpha'?'sq-alpha':lc==='midas'?'sq-midas':(lc==='isaas'||lc==='isas')?'sq-isaas':'sq-none';
+  return `<span class="${cls}">${sq}</span>`;
+}
+
+// DASHBOARD months: Fev=col1, Mar=col2, Abr=col3, Mai=col4, Jun=col5, Jul=col6
+const DASH_MN = [{l:'Fev',c:1},{l:'Mar',c:2},{l:'Abr',c:3},{l:'Mai',c:4},{l:'Jun',c:5},{l:'Jul',c:6}];
+// METAS months: Jan–Dez at cols 2–13
+const METAS_MN = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+// FORECAST months: plan col indices (no realizado since all 0)
+const FORE_MN = [{l:'Jan',i:2},{l:'Fev',i:4},{l:'Mar',i:6},{l:'Abr',i:9},{l:'Mai',i:11},{l:'Jun',i:13}];
+
+function dashRow(lbl) {
+  return STATE.dashboard.find(r => String(r[0]||'').toLowerCase().includes(lbl.toLowerCase())) || [];
+}
+function metasRow(section, lbl) {
+  let inSection = false;
+  for (const r of STATE.metas) {
+    const l1 = String(r[1]||'').trim().toUpperCase();
+    if (l1 === section.toUpperCase()) { inSection = true; continue; }
+    if (inSection && (l1 === 'RECORRENTE' || l1 === 'ONE TIME' || l1 === 'GC') && l1 !== section.toUpperCase()) { inSection = false; continue; }
+    if (inSection && String(r[1]||'').trim().toLowerCase() === lbl.toLowerCase()) return r;
+  }
+  return [];
+}
+function foreRow(lbl) {
+  return STATE.forecast.find(r => String(r[0]||'').toLowerCase().includes(lbl.toLowerCase())) || [];
+}
+
+// ═══════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════
+function renderAll() {
+  ['ov','pipe','metas','fore','ee'].forEach(p => {
+    document.getElementById(p+'-empty').style.display = 'none';
+    document.getElementById(p+'-content').style.display = 'block';
+  });
+  const pipe = filterPipe(STATE.pipe.slice(1).filter(r=>r[1]));
+  document.getElementById('pipe-count').textContent = SQ==='Todos' ? '' : pipe.length+' oportunidades';
+  renderOverview();
+  renderPipeline();
+  renderMetas();
+  renderForecast();
+  renderEEEC();
+}
+
+// ═══════════════════════════════════════
+// VISÃO GERAL
+// ═══════════════════════════════════════
+function renderOverview() {
+  // Latest month with data
+  const vendRow = dashRow('Contratos Vendidos');
+  const metaRow = dashRow('Meta Total');
+  let lastMi = 0;
+  DASH_MN.forEach((m,i) => { if (Number(vendRow[m.c])) lastMi = i; });
+  const lm = DASH_MN[lastMi];
+
+  const ativos = Number(dashRow('Clientes ativos')[lm.c]) || 0;
+  const monetizados = Number(dashRow('Numero de clientes monetizados')[lm.c]) || 0;
+  const taxa = Number(dashRow('Taxa de monetização')[lm.c]) || 0;
+  const vendidos = Number(vendRow[lm.c]) || 0;
+  const meta = Number(metaRow[lm.c]) || 0;
+  const recGanho = Number(dashRow('Contratos Recorrentes')[lm.c]) || 0;
+  const otGanho = Number(dashRow('Contratos One Time')[lm.c]) || 0;
+  const atingimento = meta ? pct(vendidos, meta) : 0;
+
+  document.getElementById('kpi-ov').innerHTML = [
+    kcard('Clientes Ativos',ativos,lm.l+'/2025',badge('b',ativos+' carteira')),
+    kcard('Monetizados',monetizados,'Clientes com produto',badge(taxa>=0.12?'g':taxa>=0.08?'y':'r',(taxa*100).toFixed(1)+'% taxa')),
+    meta ? kprog('Contratos '+lm.l,fmtCur(vendidos),'Meta: '+fmtCur(meta),atingimento) : kcard('Contratos '+lm.l,fmtCur(vendidos),'Sem meta configurada'),
+    kcard('Recorrente',fmtCur(recGanho),'Ganho no mês',badge('c','Recorrente')),
+    kcard('One Time',fmtCur(otGanho),'Ganho no mês',badge('p','One Time')),
+    kcard('Total Geral',fmtCur(Number(dashRow('Contratos Vendidos')[10])||0),'Acumulado',badge('gr','YTD')),
+  ].join('');
+
+  // Contratos Vendidos vs Meta chart
+  const vs = DASH_MN.map(m => Number(vendRow[m.c])||0);
+  const ms = DASH_MN.map(m => Number(metaRow[m.c])||0);
+  mkChart('ch-vendas',{type:'bar',data:{labels:DASH_MN.map(m=>m.l),datasets:[
+    {label:'Meta',data:ms,type:'line',borderColor:'#D10000',fill:true,backgroundColor:'rgba(209,0,0,.06)',tension:.35,pointRadius:4,pointBackgroundColor:'#D10000'},
+    {label:'Realizado',data:vs,backgroundColor:vs.map((v,i)=>v>0?(v>=ms[i]?'rgba(5,150,105,.75)':'rgba(220,38,38,.7)'):'rgba(200,200,200,.2)'),borderRadius:5},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>c.dataset.label+': '+fmtCur(c.raw)}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#F3F4F6'},ticks:{callback:v=>'R$'+(v/1000).toFixed(0)+'k',font:{size:10}}}}}});
+
+  // Recorrente vs One Time
+  const recVals = DASH_MN.map(m => Number(dashRow('Contratos Recorrentes')[m.c])||0);
+  const otVals = DASH_MN.map(m => Number(dashRow('Contratos One Time')[m.c])||0);
+  mkChart('ch-recot',{type:'bar',data:{labels:DASH_MN.map(m=>m.l),datasets:[
+    {label:'Recorrente',data:recVals,backgroundColor:'rgba(8,145,178,.7)',borderRadius:4},
+    {label:'One Time',data:otVals,backgroundColor:'rgba(124,58,237,.7)',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtCur(c.raw)}}},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10}}},y:{stacked:true,ticks:{callback:v=>'R$'+(v/1000).toFixed(0)+'k',font:{size:10}},grid:{color:'#F3F4F6'}}}}});
+
+  // Taxa de monetização
+  const taxaVals = DASH_MN.map(m => { const v=Number(dashRow('Taxa de monetização')[m.c]); return typeof v==='number'&&!isNaN(v)?+(v*100).toFixed(2):0; });
+  mkChart('ch-taxa',{type:'line',data:{labels:DASH_MN.map(m=>m.l),datasets:[
+    {label:'Taxa (%)',data:taxaVals,borderColor:'#D10000',backgroundColor:'rgba(209,0,0,.08)',fill:true,tension:.35,pointRadius:4,pointBackgroundColor:'#D10000'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{callback:v=>v+'%',font:{size:10}},grid:{color:'#F3F4F6'}}}}});
+
+  // E.E KPIs
+  const eeAq = DASH_MN.map(m=>Number(dashRow('Aquisição')[m.c])||0);
+  const eeMon = DASH_MN.map(m=>Number(dashRow('monetizados de E')[m.c])||0);
+  const eeVal = Number(dashRow('Valor monetizado de E')[lm.c])||0;
+  const eeConv = Number(dashRow('Taxa de conversão E')[lm.c])||0;
+  const eeValTotal = DASH_MN.reduce((s,m)=>s+(Number(dashRow('Valor monetizado de E')[m.c])||0),0);
+
+  document.getElementById('kpi-ee').innerHTML = [
+    kcard('Clientes E.E Adquiridos',eeAq.reduce((s,v)=>s+v,0),'Total acumulado',badge('b','E.E/E.C')),
+    kcard('Monetizados via E.E',eeMon.reduce((s,v)=>s+v,0),'Total convertidos',badge('g','Convertidos')),
+    kcard('Valor Monetizado E.E',fmtCur(eeValTotal),'Acumulado',badge('p','Total')),
+    kcard('Taxa Conversão E.E',(eeConv*100).toFixed(0)+'%','Último mês',badge(eeConv>=0.6?'g':'y',eeConv>=0.6?'✓ Alta':'→ Média')),
+  ].join('');
+
+  // E.E Valor chart
+  const eeValMes = DASH_MN.map(m=>Number(dashRow('Valor monetizado de E')[m.c])||0);
+  mkChart('ch-ee-val',{type:'bar',data:{labels:DASH_MN.map(m=>m.l),datasets:[{label:'Valor Monetizado',data:eeValMes,backgroundColor:'rgba(5,150,105,.7)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtCur(c.raw)}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{callback:v=>'R$'+(v/1000).toFixed(0)+'k',font:{size:10}},grid:{color:'#F3F4F6'}}}}});
+
+  // E.E Clientes chart
+  mkChart('ch-ee-cli',{type:'bar',data:{labels:DASH_MN.map(m=>m.l),datasets:[
+    {label:'Adquiridos',data:eeAq,backgroundColor:'rgba(8,145,178,.7)',borderRadius:4},
+    {label:'Monetizados',data:eeMon,backgroundColor:'rgba(5,150,105,.7)',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{stepSize:1,font:{size:10}},grid:{color:'#F3F4F6'}}}}});
+}
+
+// ═══════════════════════════════════════
+// PIPELINE
+// ═══════════════════════════════════════
+let _pipeRows = [];
+function renderPipeline() {
+  _pipeRows = filterPipe(STATE.pipe.slice(1).filter(r=>r[1]));
+  const byStatus = {};
+  _pipeRows.forEach(r => {
+    const s = normStatus(r[13]);
+    if (!byStatus[s]) byStatus[s] = {count:0,fee:0};
+    byStatus[s].count++;
+    byStatus[s].fee += Number(r[6])||0;
+  });
+
+  const stages = [
+    {k:'Oportunidade Levantada',css:'levantada'},{k:'Account Planning',css:'account'},
+    {k:'Reunião Realizada',css:'reuniao'},{k:'Proposta Enviada',css:'proposta'},
+    {k:'Em Negociação',css:'negoc'},{k:'Em Follow',css:'follow'},
+    {k:'Ganho',css:'ganho'},{k:'Perdido',css:'perdido'},
+  ];
+
+  const ganhoTotal = (byStatus['Ganho']?.fee||0);
+  const perdidoTotal = (byStatus['Perdido']?.fee||0);
+  const emAberto = _pipeRows.filter(r=>!['Ganho','Perdido'].includes(normStatus(r[13]))).length;
+
+  // KPIs cards
+  document.getElementById('funnel-cards').innerHTML = stages.map(s => {
+    const d = byStatus[s.k]||{count:0,fee:0};
+    return `<div class="fstage fs-${s.css}">
+      <div class="fn" style="color:${s.k==='Ganho'?'#059669':s.k==='Perdido'?'#DC2626':s.k==='Em Negociação'?'#0891B2':s.k==='Proposta Enviada'?'#7C3AED':''}">${d.count}</div>
+      <div class="fl">${s.k}</div>
+      ${d.fee>0?`<div class="fv">${fmtCur(d.fee)} fee</div>`:''}
+    </div>`;
+  }).join('');
+
+  // Status chart
+  const stLabels = stages.map(s=>s.k);
+  const stData = stages.map(s=>(byStatus[s.k]||{}).count||0);
+  const stColors = ['#9CA3AF','#6B7280','#F59E0B','#7C3AED','#0891B2','#D97706','#059669','#DC2626'];
+  mkChart('ch-pipe-st',{type:'doughnut',data:{labels:stLabels,datasets:[{data:stData,backgroundColor:stColors,borderWidth:3,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:10}}}}});
+
+  // Temperatura chart
+  const byTemp = {};
+  _pipeRows.forEach(r => { const t=normTemp(r[14]); byTemp[t]=(byTemp[t]||0)+1; });
+  const tOrder = ['Vendido','Quente','Morno','Frio','Perdido'];
+  const tColors = {'Vendido':'#059669','Quente':'#D97706','Morno':'#0891B2','Frio':'#6B7280','Perdido':'#DC2626'};
+  mkChart('ch-pipe-temp',{type:'doughnut',data:{labels:tOrder.filter(t=>byTemp[t]),datasets:[{data:tOrder.filter(t=>byTemp[t]).map(t=>byTemp[t]),backgroundColor:tOrder.filter(t=>byTemp[t]).map(t=>tColors[t]),borderWidth:3,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:10}}}}});
+
+  renderPipeTable();
+}
+
+function renderPipeTable() {
+  const fSt = document.getElementById('f-pipe-status')?.value||'';
+  const fTp = document.getElementById('f-pipe-temp')?.value||'';
+  const s = (document.getElementById('s-pipe')?.value||'').toLowerCase();
+  const tb = document.getElementById('tb-pipe'); if(!tb)return;
+  tb.innerHTML='';
+  let rows = _pipeRows;
+  if (fSt) rows = rows.filter(r=>normStatus(r[13])===fSt);
+  if (fTp) rows = rows.filter(r=>normTemp(r[14])===fTp);
+  if (s) rows = rows.filter(r=>(String(r[1]||'')+String(r[10]||'')).toLowerCase().includes(s));
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:#9CA3AF;padding:16px">Nenhuma oportunidade encontrada</td></tr>'; return; }
+  rows.forEach(r => {
+    tb.innerHTML += `<tr>
+      <td><strong>${r[1]||'—'}</strong></td>
+      <td>${sqTag(r[8])}</td>
+      <td>${r[10]||'—'}</td>
+      <td>${r[9]==='Recorrente'?'<span class="kbadge c">Recorrente</span>':'<span class="kbadge p">One Time</span>'}</td>
+      <td>${r[6]?fmtCur(r[6]):'—'}</td>
+      <td>${r[7]||'—'}</td>
+      <td style="color:var(--muted);font-size:11px">${r[11]||'—'}</td>
+      <td>${statusBadge(r[13])}</td>
+      <td>${tempBadge(r[14])}</td>
+    </tr>`;
+  });
+}
+
+// ═══════════════════════════════════════
+// METAS
+// ═══════════════════════════════════════
+function renderMetas() {
+  // Find section rows dynamically
+  let recSection=false, otSection=false, gcSection=false;
+  let recMeta=[],recGanho=[],recPct=[];
+  let otMeta=[],otGanho=[],otPct=[];
+  let gcNovos=[],gcReal=[];
+
+  STATE.metas.forEach(r => {
+    const lbl = String(r[1]||'').trim().toUpperCase();
+    const lbl_orig = String(r[1]||'').trim();
+    if (lbl==='RECORRENTE') { recSection=true; otSection=false; gcSection=false; return; }
+    if (lbl==='ONE TIME') { recSection=false; otSection=true; gcSection=false; return; }
+    if (lbl==='GC') { recSection=false; otSection=false; gcSection=true; return; }
+
+    const vals = r.slice(2,14).map(v=>typeof v==='number'?v:0);
+
+    if (recSection && lbl_orig==='Meta') recMeta=vals;
+    if (recSection && lbl_orig==='GANHO') recGanho=vals;
+    if (recSection && lbl_orig==='Percentual atingido') recPct=vals;
+    if (otSection && lbl_orig==='Meta') otMeta=vals;
+    if (otSection && lbl_orig==='GANHO') otGanho=vals;
+    if (otSection && lbl_orig==='Percentual atingido') otPct=vals;
+    if (lbl_orig==='Novos Clientes') gcNovos=vals;
+    if (lbl_orig==='Growth Class Realizado') gcReal=vals;
+  });
+
+  // KPIs
+  const recTotalMeta = recMeta.reduce((s,v)=>s+v,0);
+  const recTotalGanho = recGanho.reduce((s,v)=>s+v,0);
+  const otTotalMeta = otMeta.reduce((s,v)=>s+v,0);
+  const otTotalGanho = otGanho.reduce((s,v)=>s+v,0);
+  const q1RecPct = recMeta.slice(0,3).reduce((s,v)=>s+v,0) ? pct(recGanho.slice(0,3).reduce((s,v)=>s+v,0), recMeta.slice(0,3).reduce((s,v)=>s+v,0)) : 0;
+  const q1OtPct  = otMeta.slice(0,3).reduce((s,v)=>s+v,0)  ? pct(otGanho.slice(0,3).reduce((s,v)=>s+v,0),  otMeta.slice(0,3).reduce((s,v)=>s+v,0))  : 0;
+
+  document.getElementById('kpi-metas').innerHTML = [
+    kprog('Recorrente YTD',fmtCur(recTotalGanho),'Meta: '+fmtCur(recTotalMeta),pct(recTotalGanho,recTotalMeta||1)),
+    kprog('One Time YTD',fmtCur(otTotalGanho),'Meta: '+fmtCur(otTotalMeta),pct(otTotalGanho,otTotalMeta||1)),
+    kcard('Q1 Recorrente',q1RecPct+'%','% atingido Q1',badge(bCls(q1RecPct),q1RecPct+'% Q1')),
+    kcard('Q1 One Time',q1OtPct+'%','% atingido Q1',badge(bCls(q1OtPct),q1OtPct+'% Q1')),
+    kcard('Recorrente Jan–Mar',fmtCur(recGanho.slice(0,3).reduce((s,v)=>s+v,0)),'Ganho Q1',badge('c','Q1')),
+    kcard('One Time Jan–Mar',fmtCur(otGanho.slice(0,3).reduce((s,v)=>s+v,0)),'Ganho Q1',badge('p','Q1')),
+  ].join('');
+
+  const chartOpts = (cb) => ({responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>c.dataset.label+': '+fmtCur(c.raw)}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#F3F4F6'},ticks:{callback:v=>'R$'+(v/1000).toFixed(0)+'k',font:{size:10}},...(cb||{})}}});
+
+  mkChart('ch-rec-meta',{type:'bar',data:{labels:METAS_MN,datasets:[
+    {label:'Meta',data:recMeta,type:'line',borderColor:'#D10000',fill:true,backgroundColor:'rgba(209,0,0,.06)',tension:.35,pointRadius:3,pointBackgroundColor:'#D10000'},
+    {label:'Ganho',data:recGanho,backgroundColor:recGanho.map((v,i)=>v>0?(v>=recMeta[i]?'rgba(5,150,105,.75)':'rgba(8,145,178,.7)'):'rgba(200,200,200,.2)'),borderRadius:4},
+  ]},options:chartOpts()});
+
+  mkChart('ch-ot-meta',{type:'bar',data:{labels:METAS_MN,datasets:[
+    {label:'Meta',data:otMeta,type:'line',borderColor:'#7C3AED',fill:true,backgroundColor:'rgba(124,58,237,.06)',tension:.35,pointRadius:3,pointBackgroundColor:'#7C3AED'},
+    {label:'Ganho',data:otGanho,backgroundColor:otGanho.map((v,i)=>v>0?(v>=otMeta[i]?'rgba(5,150,105,.75)':'rgba(124,58,237,.6)'):'rgba(200,200,200,.2)'),borderRadius:4},
+  ]},options:chartOpts()});
+
+  // GC KPIs
+  const gcNovosTotal = gcNovos.filter(v=>v>0).reduce((s,v)=>s+v,0);
+  const gcRealTotal = gcReal.filter(v=>v>0).reduce((s,v)=>s+v,0);
+  document.getElementById('kpi-gc').innerHTML = [
+    kcard('Novos Clientes',gcNovosTotal,'Total incorporados',badge('b','GC')),
+    kcard('Growth Class Realizado',gcRealTotal,'GC concluídos',badge('g','Realizado')),
+    kcard('Taxa GC',gcNovosTotal?(gcRealTotal/gcNovosTotal*100).toFixed(0)+'%':'—','GC / Novos clientes',badge('gr','—')),
+  ].join('');
+
+  mkChart('ch-gc',{type:'bar',data:{labels:METAS_MN.slice(0,gcNovos.filter(v=>v).length||4),datasets:[
+    {label:'Novos Clientes',data:gcNovos.slice(0,gcNovos.filter(v=>v).length||4),backgroundColor:'rgba(209,0,0,.65)',borderRadius:4},
+    {label:'GC Realizado',data:gcReal.slice(0,gcNovos.filter(v=>v).length||4),backgroundColor:'rgba(5,150,105,.7)',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{stepSize:1,font:{size:10}},grid:{color:'#F3F4F6'}}}}});
+}
+
+// ═══════════════════════════════════════
+// FORECAST
+// ═══════════════════════════════════════
+function renderForecast() {
+  const mrrFinal = foreRow('MRR Final');
+  const recLiq = foreRow('RECEITA LÍQUIDA');
+  const churnFin = foreRow('Churn Financeiro');
+  const novasRec = foreRow('Novas Vendas Recorrentes');
+  const novasOT = foreRow('Novas Vendas One Time');
+  const royalties = foreRow('ROYALTIES');
+  const iss = foreRow('ISS');
+  const das = foreRow('DAS');
+
+  const mrrVals = FORE_MN.map(m=>Number(mrrFinal[m.i])||0);
+  const liqVals = FORE_MN.map(m=>Number(recLiq[m.i])||0);
+  const mrrJan = mrrVals[0] || 0;
+  const mrrJun = mrrVals[mrrVals.length-1] || 0;
+  const liqJan = liqVals[0] || 0;
+
+  document.getElementById('kpi-fore').innerHTML = [
+    kcard('MRR Jan/26',fmtCur(mrrJan),'Projetado',badge('b','Jan')),
+    kcard('MRR Jun/26',fmtCur(mrrJun),'Projetado 1H',badge('b','Jun')),
+    kcard('Receita Líquida Jan',fmtCur(liqJan),'Após impostos',badge('g','Líquida')),
+    kcard('Royalties (15%)',fmtCur(Number(royalties[2])||0),'Janeiro projetado',badge('r','15%')),
+    kcard('ISS + PIS/COFINS',fmtCur((Number(iss[2])||0)+(Number(foreRow('PIS')[2])||0)),'Impostos Jan',badge('y','5.5%')),
+    kcard('DAS',fmtCur(Number(das[2])||0),'Janeiro projetado',badge('gr','11%')),
+  ].join('');
+
+  mkChart('ch-mrr',{type:'bar',data:{labels:FORE_MN.map(m=>m.l),datasets:[
+    {label:'MRR Final',data:mrrVals,backgroundColor:'rgba(209,0,0,.15)',borderColor:'#D10000',borderWidth:2,borderRadius:4},
+    {label:'Receita Líquida',data:liqVals,backgroundColor:'rgba(5,150,105,.7)',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>c.dataset.label+': '+fmtCur(c.raw)}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#F3F4F6'},ticks:{callback:v=>'R$'+(v/1000000).toFixed(2)+'M',font:{size:10}}}}}});
+
+  mkChart('ch-churn',{type:'bar',data:{labels:FORE_MN.map(m=>m.l),datasets:[{label:'Churn (clientes)',data:FORE_MN.map(m=>Number(churnFin[m.i])||0),backgroundColor:'rgba(220,38,38,.65)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+' clientes'}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#F3F4F6'},ticks:{font:{size:10}}}}}});
+
+  mkChart('ch-novos',{type:'bar',data:{labels:FORE_MN.map(m=>m.l),datasets:[
+    {label:'Recorrente',data:FORE_MN.map(m=>Number(novasRec[m.i])||0),backgroundColor:'rgba(8,145,178,.7)',borderRadius:4},
+    {label:'One Time',data:FORE_MN.map(m=>Number(novasOT[m.i])||0),backgroundColor:'rgba(124,58,237,.7)',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}}},
+    scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:10}}},y:{stacked:true,ticks:{stepSize:1,font:{size:10}},grid:{color:'#F3F4F6'}}}}});
+
+  // Breakdown table
+  const rows = [
+    {l:'MRR Final',r:foreRow('MRR Final')},
+    {l:'Receita Líquida',r:foreRow('RECEITA LÍQUIDA'),bold:true},
+    {l:'ROYALTIES (15%)',r:foreRow('ROYALTIES'),neg:true},
+    {l:'ISS (3,5%)',r:foreRow('ISS'),neg:true},
+    {l:'PIS + Cofins (2%)',r:foreRow('PIS'),neg:true},
+    {l:'DAS (11%)',r:foreRow('DAS'),neg:true},
+    {l:'Churn Financeiro',r:foreRow('Churn Financeiro'),neg:true},
+    {l:'Total Vendas Recorrentes',r:foreRow('Total vendas Recorrentes')},
+    {l:'Total Vendas One Time',r:foreRow('Total vendas One Time')},
+    {l:'Novas Vendas Rec. (#)',r:novasRec,fmt:'n'},
+    {l:'Novas Vendas OT (#)',r:novasOT,fmt:'n'},
+  ];
+  const tb = document.getElementById('tb-fore'); tb.innerHTML='';
+  rows.forEach(({l,r,neg,bold,fmt}) => {
+    const vals = FORE_MN.map(m => {
+      const v = Number(r[m.i])||0;
+      const fv = fmt==='n' ? v.toFixed(0) : (v?fmtCur(v):'—');
+      return `<td style="${bold?'font-weight:700':''}${neg&&v?';color:#DC2626':''}">${fv}</td>`;
+    }).join('');
+    tb.innerHTML += `<tr><td style="font-weight:${bold?700:500};white-space:nowrap">${l}</td>${vals}</tr>`;
+  });
+}
+
+// ═══════════════════════════════════════
+// E.E / E.C
+// ═══════════════════════════════════════
+let _eeRows = [];
+function renderEEEC() {
+  _eeRows = STATE.eeec.slice(2).filter(r=>r[0]&&String(r[0]).trim());
+  const total = _eeRows.length;
+  const concluidos = _eeRows.filter(r=>r[3]&&r[3]!=='aguardando').length;
+  const emAndamento = total - concluidos;
+
+  const fases = ['1º','2º','3º','4º'];
+  const progTot = _eeRows.reduce((s,r)=>s+fases.filter((_,i)=>r[6+i]===true).length,0);
+  const progMax = total*4;
+
+  document.getElementById('kpi-ee2').innerHTML = [
+    kcard('Total E.E/E.C',total,'Clientes em estruturação',badge('b','Total')),
+    kcard('Em Andamento',emAndamento,'Sem data de fim definida',badge('y','Ativo')),
+    kcard('Concluídos',concluidos,'Com data de finalização',badge('g','Concluído')),
+    kcard('Progresso Geral',progMax?(progTot/progMax*100).toFixed(0)+'%':'—','Encontros realizados',badge('gr',`${progTot}/${progMax} enc.`)),
+  ].join('');
+
+  filterEE();
+}
+
+function filterEE() {
+  const s = (document.getElementById('s-ee')?.value||'').toLowerCase();
+  const tb = document.getElementById('tb-ee'); if(!tb)return;
+  tb.innerHTML='';
+  const rows = s ? _eeRows.filter(r=>String(r[0]||'').toLowerCase().includes(s)) : _eeRows;
+  if (!rows.length) { tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum cliente encontrado</td></tr>'; return; }
+  rows.forEach(r => {
+    const fases = [r[6],r[7],r[8],r[9]];
+    const steps = fases.map((v,i) => {
+      const ok = v===true;
+      return `<span class="step-dot ${ok?'step-ok':'step-no'}" title="${['Saber','Ter','Executar','Performar'][i]}"></span>`;
+    }).join('');
+    const prog = fases.filter(v=>v===true).length;
+    const progCls = prog>=3?'g':prog>=2?'y':'r';
+    tb.innerHTML += `<tr>
+      <td><strong>${r[0]||'—'}</strong></td>
+      <td style="font-size:11px;color:var(--muted)">${r[1]||'—'}</td>
+      <td>${sqTag(r[4])}</td>
+      <td>${r[5]||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(r[2])}</td>
+      <td style="font-size:11px;color:var(--muted)">${r[3]==='aguardando'?'<span class="kbadge y">Aguardando</span>':fmtDate(r[3])}</td>
+      <td>${r[6]===true?'<span class="step-dot step-ok" style="display:inline-block"></span>':'<span class="step-dot step-no" style="display:inline-block"></span>'}</td>
+      <td>${r[7]===true?'<span class="step-dot step-ok" style="display:inline-block"></span>':'<span class="step-dot step-no" style="display:inline-block"></span>'}</td>
+      <td>${r[8]===true?'<span class="step-dot step-ok" style="display:inline-block"></span>':'<span class="step-dot step-no" style="display:inline-block"></span>'}</td>
+      <td><div class="steps">${steps}</div><span class="kbadge ${progCls}" style="margin-top:4px;font-size:9px">${prog}/4</span></td>
+    </tr>`;
+  });
+}
+
+// ═══════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById('panel-'+this.dataset.tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
