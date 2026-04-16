@@ -168,6 +168,46 @@
   .ri-btn.active{background:var(--v4);border-color:var(--v4);color:#fff}
   #btn-cfg.cfg-open{background:rgba(209,0,0,.2);border-color:var(--v4)}
 
+  /* ── CSP ──────────────────────────────── */
+  .csp-lock{position:fixed;inset:0;background:rgba(10,10,10,.82);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .csp-lock-box{background:#1A1A1A;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:36px 40px;width:340px;text-align:center}
+  .csp-lock-ico{font-size:36px;margin-bottom:12px}
+  .csp-lock-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
+  .csp-lock-sub{font-size:12px;color:rgba(255,255,255,.45);margin-bottom:20px}
+  .csp-lock-in{width:100%;padding:10px 14px;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:8px;color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;letter-spacing:.5px}
+  .csp-lock-in:focus{border-color:var(--v4)}
+  .csp-lock-err{color:#F87171;font-size:11px;margin-bottom:8px;min-height:16px}
+  .csp-sec-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:0}
+  .csp-sec-tab{padding:7px 18px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
+  .csp-sec-tab:hover{color:var(--text)}
+  .csp-sec-tab.active{color:var(--v4);border-bottom-color:var(--v4)}
+  .csp-sec-tab.csp-isaas.active{color:#0891B2;border-bottom-color:#0891B2}
+  .csp-fin{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .csp-fin-group{display:flex;flex-direction:column;gap:4px;min-width:130px}
+  .csp-fin-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .csp-fin-in{padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;outline:none;width:100%}
+  .csp-fin-in:focus{border-color:var(--v4)}
+  .csp-fin-result{background:var(--bg);border-radius:7px;padding:8px 12px;min-width:130px}
+  .csp-fin-result-lbl{font-size:10px;color:var(--muted);font-weight:600}
+  .csp-fin-result-val{font-size:18px;font-weight:800;color:var(--text);margin-top:2px}
+  .csp-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+  .csp-mcard{border-radius:10px;padding:14px 16px;border:2px solid}
+  .csp-mcard-ok{background:#F0FDF4;border-color:#BBF7D0}
+  .csp-mcard-warn{background:#FFFBEB;border-color:#FDE68A}
+  .csp-mcard-err{background:#FEF2F2;border-color:#FECACA}
+  .csp-mcard-blue{background:#EFF6FF;border-color:#BFDBFE}
+  .csp-mlbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px}
+  .csp-mval{font-size:26px;font-weight:800;color:var(--text);line-height:1.1}
+  .csp-msub{font-size:11px;color:var(--muted);margin-top:3px}
+  .csp-add-row{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap;background:#F9FAFB;border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+  .csp-add-group{display:flex;flex-direction:column;gap:3px}
+  .csp-add-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .csp-add-in{padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none}
+  .csp-add-in:focus{border-color:var(--v4)}
+  .csp-team-tbl table{font-size:12px}
+  .csp-del{background:none;border:none;cursor:pointer;color:#9CA3AF;padding:2px 6px;border-radius:4px;font-size:13px}
+  .csp-del:hover{color:#DC2626;background:#FEE2E2}
+
   /* ── DATE FILTER ───────────────────────── */
   .date-in{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500;border:1.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8);background:rgba(255,255,255,.07);font-family:inherit;outline:none;cursor:pointer;min-width:108px;height:26px}
   .date-in::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.45;cursor:pointer}
@@ -324,6 +364,9 @@
   <div class="tab" data-tab="people">People</div>
   <div class="tab" data-tab="acoes">Plano de Ação</div>
   <div class="tab" data-tab="isaas" style="color:#0891B2;font-weight:700" id="tab-isaas">ISaaS</div>
+  <div class="tab" data-tab="csp" id="tab-csp" onclick="openCspTab(event)" style="display:flex;align-items:center;gap:5px">
+    <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>CSP
+  </div>
 </div>
 
 <div class="main">
@@ -552,6 +595,42 @@
       </div>
 
     </div><!-- /isaas-bg -->
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ CSP ═════════════════════════ -->
+<div id="panel-csp" class="panel">
+
+  <!-- Password lock overlay -->
+  <div class="csp-lock" id="csp-lock">
+    <div class="csp-lock-box">
+      <div class="csp-lock-ico">🔒</div>
+      <div class="csp-lock-title">Área Restrita — CSP</div>
+      <div class="csp-lock-sub">Custo de Servir por Cliente.<br/>Acesso protegido por senha.</div>
+      <input class="csp-lock-in" id="csp-pwd-in" type="password" placeholder="••••••••••••" onkeydown="if(event.key==='Enter')cspAuth()"/>
+      <div class="csp-lock-err" id="csp-err"></div>
+      <button class="btn btn-v4" style="width:100%;justify-content:center" onclick="cspAuth()">Entrar</button>
+    </div>
+  </div>
+
+  <!-- Conteúdo protegido -->
+  <div id="csp-content" style="display:none">
+
+    <!-- Squad tabs -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:2px">
+      <div class="csp-sec-tabs" id="csp-squad-tabs">
+        <div class="csp-sec-tab active" data-csq="Alpha" onclick="setCspSquad(this)">Alpha</div>
+        <div class="csp-sec-tab" data-csq="Midas" onclick="setCspSquad(this)">Midas</div>
+        <div class="csp-sec-tab csp-isaas" data-csq="ISaaS" onclick="setCspSquad(this)">ISaaS</div>
+      </div>
+      <button class="btn" style="background:none;border:1.5px solid var(--border);color:var(--muted);font-size:11px;padding:5px 12px" onclick="cspLogout()">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Bloquear
+      </button>
+    </div>
+
+    <!-- Per-squad content (rendered by JS) -->
+    <div id="csp-squad-panel"></div>
+
   </div>
 </div>
 
@@ -1538,12 +1617,237 @@ function filterTable(id,s){document.querySelectorAll('#'+id+' tr').forEach(r=>{r
 
 document.querySelectorAll('.tab').forEach(t=>{
   t.addEventListener('click',function(){
+    if(this.dataset.tab==='csp') return; // handled by openCspTab
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
     this.classList.add('active');
     document.getElementById('panel-'+this.dataset.tab).classList.add('active');
   });
 });
+
+// ══════════════════════════════════════════
+// CSP — CUSTO DE SERVIR POR CLIENTE
+// ══════════════════════════════════════════
+const CSP_HASH = 'c38cf44c5c2e4c0fe5e2b4b982e3af73'; // SHA256 not needed; simple comparison after obfuscation
+const CSP_KEY  = 'csp_data_v2';
+const CSP_SQUADS = {
+  Alpha: ['Account','Gestor de Tráfego','Design','Copy','Social Media','Coordenador PE&G'],
+  Midas: ['Account','Gestor de Tráfego','Design','Copy','Social Media','Coordenador PE&G'],
+  ISaaS: ['Sales Enablement','SDR','BDR','Closer'],
+};
+let CSP_ACTIVE_SQ = 'Alpha';
+
+function cspCheckPwd(v) { return v === atob('Q2hhdmVzQDE5OTEx'); }
+
+function openCspTab(e) {
+  e.stopPropagation();
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-csp').classList.add('active');
+  document.getElementById('panel-csp').classList.add('active');
+  const auth = sessionStorage.getItem('csp_auth');
+  if (auth === '1') {
+    document.getElementById('csp-lock').style.display = 'none';
+    document.getElementById('csp-content').style.display = 'block';
+    renderCspSquad();
+  } else {
+    document.getElementById('csp-lock').style.display = 'flex';
+    document.getElementById('csp-content').style.display = 'none';
+    setTimeout(()=>document.getElementById('csp-pwd-in')?.focus(), 80);
+  }
+}
+
+function cspAuth() {
+  const v = document.getElementById('csp-pwd-in').value;
+  const err = document.getElementById('csp-err');
+  if (cspCheckPwd(v)) {
+    sessionStorage.setItem('csp_auth','1');
+    document.getElementById('csp-lock').style.display = 'none';
+    document.getElementById('csp-content').style.display = 'block';
+    document.getElementById('csp-pwd-in').value = '';
+    err.textContent = '';
+    renderCspSquad();
+  } else {
+    err.textContent = 'Senha incorreta. Tente novamente.';
+    document.getElementById('csp-pwd-in').value = '';
+    document.getElementById('csp-pwd-in').focus();
+  }
+}
+
+function cspLogout() {
+  sessionStorage.removeItem('csp_auth');
+  document.getElementById('csp-lock').style.display = 'flex';
+  document.getElementById('csp-content').style.display = 'none';
+}
+
+function cspData() {
+  try { return JSON.parse(localStorage.getItem(CSP_KEY)) || {}; } catch { return {}; }
+}
+function cspSave(d) { localStorage.setItem(CSP_KEY, JSON.stringify(d)); }
+
+function cspGetSquad(sq) {
+  const d = cspData();
+  return d[sq] || { bruto: 0, royalties: 15, pessoas: [] };
+}
+function cspSetSquad(sq, obj) {
+  const d = cspData(); d[sq] = obj; cspSave(d);
+}
+
+function setCspSquad(btn) {
+  CSP_ACTIVE_SQ = btn.dataset.csq;
+  document.querySelectorAll('.csp-sec-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCspSquad();
+}
+
+function renderCspSquad() {
+  const sq = CSP_ACTIVE_SQ;
+  const data = cspGetSquad(sq);
+  const funcs = CSP_SQUADS[sq] || [];
+  const liq = data.bruto * (1 - (data.royalties || 0) / 100);
+  const folhaTot = (data.pessoas || []).reduce((s, p) => s + (Number(p.rem) || 0), 0);
+  const projTot  = (data.pessoas || []).reduce((s, p) => s + (Number(p.proj) || 0), 0);
+  const csp      = projTot > 0 ? folhaTot / projTot : 0;
+  const cspPct   = liq > 0 ? (folhaTot / liq * 100) : 0;
+  const cspCls   = cspPct < 30 ? 'csp-mcard-ok' : cspPct < 50 ? 'csp-mcard-warn' : 'csp-mcard-err';
+  const isColor  = sq === 'ISaaS' ? '#0891B2' : sq === 'Alpha' ? '#7C3AED' : '#D10000';
+
+  const panel = document.getElementById('csp-squad-panel');
+  panel.innerHTML = `
+  <div style="border-top:3px solid ${isColor};border-radius:0 0 0 0;margin-bottom:14px"></div>
+
+  <!-- Financeiro -->
+  <div class="csp-fin">
+    <div class="csp-fin-group">
+      <div class="csp-fin-lbl">Faturamento Bruto</div>
+      <input class="csp-fin-in" id="csp-bruto" type="number" min="0" placeholder="0" value="${data.bruto||''}" oninput="cspUpdateFin()" style="border-color:${isColor}40"/>
+    </div>
+    <div class="csp-fin-group">
+      <div class="csp-fin-lbl">Royalties (%)</div>
+      <input class="csp-fin-in" id="csp-roy" type="number" min="0" max="100" step="0.1" placeholder="15" value="${data.royalties??15}" oninput="cspUpdateFin()" style="max-width:90px"/>
+    </div>
+    <div class="csp-fin-result">
+      <div class="csp-fin-result-lbl">Receita Líquida</div>
+      <div class="csp-fin-result-val" id="csp-liq-val" style="color:${isColor}">${fmt(liq)}</div>
+    </div>
+    <div class="csp-fin-result">
+      <div class="csp-fin-result-lbl">Royalties (R$)</div>
+      <div class="csp-fin-result-val" id="csp-roy-val" style="color:#D97706">${fmt(data.bruto * (data.royalties||0) / 100)}</div>
+    </div>
+  </div>
+
+  <!-- CSP Metrics -->
+  <div class="csp-metrics">
+    <div class="csp-mcard csp-mcard-blue">
+      <div class="csp-mlbl">Total Folha</div>
+      <div class="csp-mval">${fmt(folhaTot)}</div>
+      <div class="csp-msub">${(data.pessoas||[]).length} pessoas</div>
+    </div>
+    <div class="csp-mcard ${cspCls}">
+      <div class="csp-mlbl">% Folha / Líquida</div>
+      <div class="csp-mval">${liq>0?cspPct.toFixed(1)+'%':'—'}</div>
+      <div class="csp-msub">${cspPct<30?'✓ Saudável':cspPct<50?'⚠ Atenção':'⛔ Alto'}</div>
+    </div>
+    <div class="csp-mcard csp-mcard-blue">
+      <div class="csp-mlbl">CSP por Projeto</div>
+      <div class="csp-mval">${projTot>0?fmt(csp):'—'}</div>
+      <div class="csp-msub">${projTot} projetos ativos</div>
+    </div>
+    <div class="csp-mcard csp-mcard-blue">
+      <div class="csp-mlbl">Receita Líquida</div>
+      <div class="csp-mval">${fmt(liq)}</div>
+      <div class="csp-msub">Bruto − Royalties</div>
+    </div>
+  </div>
+
+  <!-- Add member form -->
+  <div class="sec">Time — ${sq}</div>
+  <div class="csp-add-row">
+    <div class="csp-add-group">
+      <div class="csp-add-lbl">Nome</div>
+      <input class="csp-add-in" id="csp-new-nome" placeholder="Nome completo" style="min-width:140px"/>
+    </div>
+    <div class="csp-add-group">
+      <div class="csp-add-lbl">Função</div>
+      <select class="csp-add-in" id="csp-new-func">
+        ${funcs.map(f=>`<option>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="csp-add-group">
+      <div class="csp-add-lbl">Projetos</div>
+      <input class="csp-add-in" id="csp-new-proj" type="number" min="0" placeholder="0" style="width:70px"/>
+    </div>
+    <div class="csp-add-group">
+      <div class="csp-add-lbl">Remuneração (R$)</div>
+      <input class="csp-add-in" id="csp-new-rem" type="number" min="0" placeholder="0" style="width:120px"/>
+    </div>
+    <button class="btn btn-v4" onclick="cspAddPessoa()" style="height:32px;white-space:nowrap">+ Adicionar</button>
+  </div>
+
+  <!-- Team table -->
+  <div class="tcard csp-team-tbl">
+    <div class="thdrow">
+      Equipe ${sq}
+      <span class="kbadge b">${(data.pessoas||[]).length} pessoas · ${projTot} projetos</span>
+    </div>
+    <div class="tw"><table>
+      <thead><tr>
+        <th>Nome</th><th>Função</th><th>Projetos</th><th>Remuneração</th><th>% da Folha</th><th></th>
+      </tr></thead>
+      <tbody id="csp-tb">
+        ${(data.pessoas||[]).length===0
+          ? '<tr><td colspan="6" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum membro adicionado ainda</td></tr>'
+          : (data.pessoas||[]).map((p,i)=>`
+          <tr>
+            <td><strong>${p.nome||'—'}</strong></td>
+            <td><span class="kbadge gr">${p.func||'—'}</span></td>
+            <td style="text-align:center">${p.proj||0}</td>
+            <td><strong>${fmt(p.rem)}</strong></td>
+            <td style="color:${folhaTot>0&&(p.rem/folhaTot*100)>30?'#D97706':'#059669'}">${folhaTot>0?(p.rem/folhaTot*100).toFixed(1)+'%':'—'}</td>
+            <td><button class="csp-del" onclick="cspRemovePessoa(${i})" title="Remover">✕</button></td>
+          </tr>`).join('')
+        }
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+function cspUpdateFin() {
+  const sq = CSP_ACTIVE_SQ;
+  const data = cspGetSquad(sq);
+  data.bruto = Number(document.getElementById('csp-bruto')?.value) || 0;
+  data.royalties = Number(document.getElementById('csp-roy')?.value) ?? 15;
+  cspSetSquad(sq, data);
+  const liq = data.bruto * (1 - data.royalties / 100);
+  const el = document.getElementById('csp-liq-val');
+  const er = document.getElementById('csp-roy-val');
+  if (el) el.textContent = fmt(liq);
+  if (er) er.textContent = fmt(data.bruto * data.royalties / 100);
+  // re-render metrics only
+  renderCspSquad();
+}
+
+function cspAddPessoa() {
+  const nome = document.getElementById('csp-new-nome')?.value.trim();
+  const func = document.getElementById('csp-new-func')?.value;
+  const proj = Number(document.getElementById('csp-new-proj')?.value) || 0;
+  const rem  = Number(document.getElementById('csp-new-rem')?.value) || 0;
+  if (!nome) { alert('Informe o nome da pessoa.'); return; }
+  const sq = CSP_ACTIVE_SQ;
+  const data = cspGetSquad(sq);
+  data.pessoas = data.pessoas || [];
+  data.pessoas.push({ nome, func, proj, rem });
+  cspSetSquad(sq, data);
+  renderCspSquad();
+}
+
+function cspRemovePessoa(idx) {
+  const sq = CSP_ACTIVE_SQ;
+  const data = cspGetSquad(sq);
+  data.pessoas.splice(idx, 1);
+  cspSetSquad(sq, data);
+  renderCspSquad();
+}
 </script>
 </body>
 </html>
