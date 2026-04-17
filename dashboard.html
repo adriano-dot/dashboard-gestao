@@ -783,6 +783,11 @@ function buildSquadMaps() {
 
   // Reconstrói índices de linhas após MONTHS ter sido atualizado
   buildRowIdx();
+
+  console.log('[buildSquadMaps] cockpit:', STATE.cockpit.length, 'linhas |',
+    'painel2026:', STATE.painel2026.length, 'linhas |',
+    'ckSquadCol:', STATE._ckSquadCol, '|',
+    'MONTHS:', MONTHS.map(m=>m.l+'(m='+m.m+',r='+m.r+')').join(', '));
 }
 
 // Helper robusto: normaliza status (trim + case-insensitive)
@@ -951,7 +956,8 @@ function extractId(url) {
 }
 
 async function fetchSheet(id, name, min=5) {
-  const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(name)}&headers=0&_=${Date.now()}`;
+  const sheetParam = name ? `&sheet=${encodeURIComponent(name)}` : '';
+  const url = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:json${sheetParam}&headers=0&_=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status} — aba "${name}"`);
   const txt = await res.text();
@@ -972,10 +978,26 @@ async function fetchSheet(id, name, min=5) {
           v = new Date(p[0],p[1],p[2]);
         }
         cells[i] = v;
+      } else if (c?.f != null) {
+        // fallback: usa valor formatado quando v é nulo (ex: células com formato especial)
+        cells[i] = c.f;
       }
     });
     return cells;
   });
+}
+
+// Tenta múltiplos nomes de aba em paralelo e retorna o primeiro com dados
+async function fetchSheetFirst(id, names, min=5) {
+  const results = await Promise.allSettled(names.map(n => fetchSheet(id, n, min)));
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status === 'fulfilled' && results[i].value?.length >= 1) {
+      console.log(`[fetchSheetFirst] ✓ tab "${names[i]}" → ${results[i].value.length} linhas`);
+      return results[i].value;
+    }
+  }
+  console.warn(`[fetchSheetFirst] ✗ Nenhuma aba encontrada entre: [${names.join(', ')}]`);
+  return [];
 }
 
 // ── Multi-sheet config helpers ──────────────────────────────
@@ -1041,15 +1063,15 @@ async function connectSheets(silent=false) {
       if (!id) return null;
       const tag = (rows, sq) => rows.map(r => { const nr=[...r]; nr._squad=sq||cfg.squad; return nr; });
       const [p2026, ck, ot, hp, pdsa, pa, cap, hs, csp] = await Promise.all([
-        fetchSheet(id,'Painel 2026',44),
-        fetchSheet(id,'Cockpit Overview',43),
-        fetchSheet(id,'One Time',11),
-        fetchSheet(id,'HealthScore People',9),
-        fetchSheet(id,'PDSA 2026',14),
-        fetchSheet(id,'Plano de Ação',14),
-        fetchSheet(id,'Capacidade',5),
-        fetchSheet(id,'Health Score',91),
-        fetchSheet(id,'CSP',5),
+        fetchSheetFirst(id,['Painel 2026','Painel','Painel2026','Dashboard','KPIs','Resumo'],44),
+        fetchSheetFirst(id,['Cockpit Overview','Cockpit','Overview','cockpit overview','Cockpit overview','Clientes','Base'],43),
+        fetchSheetFirst(id,['One Time','OneTime','One-Time','one time','Projetos'],11),
+        fetchSheetFirst(id,['HealthScore People','Health Score People','HS People','People'],9),
+        fetchSheetFirst(id,['PDSA 2026','PDSA','pdsa 2026'],14),
+        fetchSheetFirst(id,['Plano de Ação','Plano de Acao','Plano Ação','Plano Acao','Plano de Açã'],14),
+        fetchSheetFirst(id,['Capacidade','Capacity','capacidade'],5),
+        fetchSheetFirst(id,['Health Score','HealthScore','Health score','NPS','HS'],91),
+        fetchSheetFirst(id,['CSP','Dashboard','Página1','Sheet1','Plan1'],5),
       ]);
       return { squad:cfg.squad, painel2026:p2026,
         cockpit:  tag(normalizeCockpitRows(ck), cfg.squad),
@@ -1072,8 +1094,16 @@ async function connectSheets(silent=false) {
       planoAcao:   valid.flatMap(s=>s.planoAcao),
       capacidade:  valid.flatMap(s=>s.capacidade),
     };
+    // Diagnóstico: conta clientes e linhas do Painel
+    const ckCount = STATE.cockpit.slice(1).filter(r => r[6] || r[0]).length;
+    const p26Rows = STATE.painel2026.length;
+    const diagStr = ckCount > 0
+      ? ` · ${ckCount} clientes`
+      : ' · ⚠ sem dados cockpit';
+    const p26Str = p26Rows > 0 ? '' : ' · ⚠ sem Painel 2026';
+    console.log(`[connectSheets] cockpit=${STATE.cockpit.length} linhas, painel2026=${p26Rows} linhas, clientes=${ckCount}`);
     setSt('ok','Conectado · '+new Date().toLocaleTimeString('pt-BR')+
-      (valid.length>1?' ('+valid.length+' planilhas)':''));
+      (valid.length>1?' ('+valid.length+' planilhas)':'')+diagStr+p26Str);
     buildSquadMaps();
     // Fetch planilhas CSP separadas por squad
     STATE._cspRawPerSquad = {};
@@ -1320,6 +1350,7 @@ function applyDynamicMonths(painel) {
   MONTHS.splice(0, MONTHS.length, ...target);
   ACTIVE_PERIOD = -1; // reset para "Atual"
   buildPeriodPills();
+  console.log('[applyDynamicMonths]', detected ? '✓ detectado automaticamente' : '⚠ fallback hardcoded', JSON.stringify(target));
 }
 
 const ROWS={receita:-1,volClientes:-1,capOper:-1,nrr:-1,monTotal:-1,monRec:-1,monVar:-1,revChurnPct:-1,revChurnR:-1,logoChurn:-1,saudeC:-1,roi:-1,intimidade:-1,recRisco:-1,nps:-1,satLider:-1,saudeInv:-1,turnover:-1,variavel:-1,folha:-1,imposto:-1,ebitda:-1,margem:-1,sdr:-1,closer:-1};
@@ -1327,13 +1358,16 @@ const IS_ROWS={receita:-1,variavel:-1,capOper:-1,folha:-1,imposto:-1,ebitda:-1,m
 
 function buildRowIdx() {
   const lbl={
-    'Receita (R$)':'receita','Volume Ideal':'volClientes','Capacidade Oper':'capOper','NRR':'nrr',
+    'Receita (R$)':'receita','Receita':'receita','MRR':'receita',
+    'Volume Ideal':'volClientes','Volume de Clientes':'volClientes','Clientes':'volClientes',
+    'Capacidade Oper':'capOper','NRR':'nrr',
     'Total (R$)':'monTotal','Recorrente ou OT':'monRec','Variável (R$)':'monVar',
-    'Revenue Churn (%)':'revChurnPct','Revenue Churn (R$)':'revChurnR','Logo Churn':'logoChurn',
+    'Revenue Churn (%)':'revChurnPct','Revenue Churn (R$)':'revChurnR','Logo Churn':'logoChurn','Logo churn':'logoChurn',
     'Saúde Clientes':'saudeC','ROI >1':'roi','Intimidade':'intimidade','Receita em Risco':'recRisco',
     'NPS':'nps','Satisfação da liderança':'satLider','Saúde Investidores':'saudeInv','Turnover':'turnover'
   };
   Object.entries(lbl).forEach(([l,k])=>{
+    if (ROWS[k] >= 0) return; // já encontrado por alias anterior
     ROWS[k]=-1;
     for(let i=0;i<STATE.painel2026.length;i++){
       const r=STATE.painel2026[i];
@@ -1343,6 +1377,9 @@ function buildRowIdx() {
       if(ROWS[k]===i)break;
     }
   });
+  const notFound = Object.entries(ROWS).filter(([,v])=>v<0).map(([k])=>k);
+  if (notFound.length > 0) console.warn('[buildRowIdx] ⚠ KPIs não encontrados no Painel:', notFound);
+  console.log('[buildRowIdx] ROWS =', JSON.stringify(ROWS));
 }
 
 function buildRowIdxFrom(rows, roObj) {
