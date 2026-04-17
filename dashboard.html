@@ -1306,12 +1306,12 @@ function cspGetSquadSummary(sq, mi) {
     cspEnsureMonths(data);
     m = data.months[mi] || {folha:0,recRec:0,recPon:0};
   }
-  const totalRec = (m.recRec||0) + (m.recPon||0);
-  const liqRec   = totalRec * (1 - CSP_ROYALTIES);
-  const cspTotal = totalRec > 0 ? (m.folha||0) / totalRec * 100 : null;
-  const cspRec   = (m.recRec||0) > 0 ? (m.folha||0) / (m.recRec||0) * 100 : null;
-  const cspLiq   = liqRec   > 0 ? (m.folha||0) / liqRec   * 100 : null;
-  return { folha: m.folha||0, recRec: m.recRec||0, recPon: m.recPon||0, totalRec, liqRec, cspTotal, cspRec, cspLiq, fromSheet: !!m.fromSheet };
+  const totalRec  = (m.recRec||0) + (m.recPon||0);
+  const liqTotal  = totalRec * (1 - CSP_ROYALTIES); // (rec + pontual) − 15% royalties
+  const cspTotal  = totalRec  > 0 ? (m.folha||0) / totalRec  * 100 : null;
+  const cspRec    = (m.recRec||0) > 0 ? (m.folha||0) / (m.recRec||0) * 100 : null;
+  const cspLiq    = liqTotal  > 0 ? (m.folha||0) / liqTotal  * 100 : null;
+  return { folha: m.folha||0, recRec: m.recRec||0, recPon: m.recPon||0, totalRec, liqTotal, cspTotal, cspRec, cspLiq, fromSheet: !!m.fromSheet };
 }
 
 function pctColor(v) { return v < CSP_EFF_THRESHOLD ? '#059669' : v < 50 ? '#D97706' : '#DC2626'; }
@@ -2178,7 +2178,7 @@ function renderCspMonthly(sq, isColor, panel) {
     <div class="csp-mcard csp-mcard-blue">
       <div class="csp-mlbl">Receita Líquida · ${CSP_MNS[curM]}</div>
       <div class="csp-mval">${cur.liq>0?fmt(cur.liq):'—'}</div>
-      <div class="csp-msub">Total ${fmt(cur.total)} − 15% roy.</div>
+      <div class="csp-msub">(Rec. + Pont.) × 85%</div>
     </div>
     <div class="csp-mcard csp-mcard-blue">
       <div class="csp-mlbl">Folha do Time · ${CSP_MNS[curM]}</div>
@@ -2255,7 +2255,7 @@ function renderCspMonthly(sq, isColor, panel) {
           <tr>
             <th>Mês</th>
             <th style="min-width:110px">Receita Total</th>
-            <th style="min-width:90px">Líquida (−15%)</th>
+            <th style="min-width:90px;color:#D97706">Líquida <span style="font-weight:400">(Total×85%)</span></th>
             <th style="min-width:90px">Folha</th>
             <th style="min-width:90px">CSP / Total</th>
             <th style="min-width:90px;color:#D97706">CSP / Líq.</th>
