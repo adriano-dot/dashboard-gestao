@@ -791,22 +791,24 @@ function getClientSquad(row) {
 function normalizeCockpitRows(rows) {
   if (!rows || rows.length < 2) return rows;
   const hdr = rows[0].map(v => String(v||'').toLowerCase().trim());
-  // Layout padrão: col 0 começa com "id_ekyte"
-  if (/^id.?ekyte/i.test(hdr[0]||'')) return rows;
-  // Layout ALPHA: col 0 = "squad", col 2 = "nome"
-  const nameIdx = hdr.findIndex(v => /^nome$|^name$/i.test(v));
-  if (nameIdx < 0) return rows; // formato desconhecido
   const fi = re => hdr.findIndex(v => re.test(v));
+  const nameIdx   = fi(/^nome$|^name$/);
+  const statusIdx = fi(/^status$/);
+  const mensalIdx = fi(/^mensal$/);
+  // Se não achou colunas essenciais, retorna sem alterar
+  if (nameIdx < 0 || statusIdx < 0 || mensalIdx < 0) return rows;
+  // Se já está no layout padrão (Status=col7, name=col6, Mensal=col12), não mexe
+  if (nameIdx === 6 && statusIdx === 7 && mensalIdx === 12) return rows;
   const m = {
     squad:    fi(/^squad$/),
     dtStart:  fi(/^data.*in[íi]cio$|^data de inicio$/),
     name:     nameIdx,
-    status:   fi(/^status$/),
+    status:   statusIdx,
     dtChurn:  fi(/^data.*churn$/),
     categ:    fi(/^categoria/),
     contrato: fi(/^valor.*contrato$/),
     comp:     fi(/^compromisso$/),
-    mensal:   fi(/^mensal$/),
+    mensal:   mensalIdx,
     coord:    fi(/^coordenador$/),
     account:  fi(/^account$/),
     gt:       fi(/^gt$/),
@@ -1070,7 +1072,7 @@ async function connectSheets(silent=false) {
       const id = extractId(url);
       if (!id) return;
       // Tenta os nomes de aba mais comuns + primeira aba sem nome (fallback)
-      const tabsToTry = ['CSP','Dashboard','Página1','Pagina1','Sheet1','Plan1','Planilha1','Plan','Alpha','Midas','ISaaS','ISAAS'];
+      const tabsToTry = ['CSP','Dashboard','Dashoard','Página1','Pagina1','Sheet1','Plan1','Planilha1','Plan','Alpha','Midas','ISaaS','ISAAS'];
       let found = false;
       for (const tabName of tabsToTry) {
         try {
@@ -1441,9 +1443,13 @@ function renderOvCSP() {
     return `<span class="ov-sq-eff ${ok?'ov-sq-eff-ok':'ov-sq-eff-err'}">${ok?'✓ Eficiente':'⚠ Ineficiente'} <span style="opacity:.7;font-size:10px">(sobre líq.)</span></span>`;
   };
 
+  const srcBadge = (s) => s.fromSheet
+    ? `<span style="font-size:9px;background:rgba(255,255,255,.15);border-radius:4px;padding:1px 5px;margin-left:6px;letter-spacing:.3px">📊 planilha</span>`
+    : `<span style="font-size:9px;background:rgba(255,255,255,.1);border-radius:4px;padding:1px 5px;margin-left:6px;letter-spacing:.3px;opacity:.6">💾 local</span>`;
+
   const sqCard = (sq, s, colorCls) => `
     <div class="ov-sq-card ${colorCls}">
-      <div class="ov-sq-lbl">${sq} · ${monthName}</div>
+      <div class="ov-sq-lbl">${sq} · ${monthName}${srcBadge(s)}</div>
       <div class="ov-sq-val">${fmt(s.totalRec)}</div>
       <div class="ov-sq-sub">Receita total gerada</div>
       <div class="ov-sq-metrics">
