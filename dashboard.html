@@ -904,7 +904,7 @@ async function connectSheets(silent=false) {
       const id = extractId(cfg.url);
       if (!id) return null;
       const tag = (rows, sq) => rows.map(r => { const nr=[...r]; nr._squad=sq||cfg.squad; return nr; });
-      const [p2026, ck, ot, hp, pdsa, pa, cap, hs] = await Promise.all([
+      const [p2026, ck, ot, hp, pdsa, pa, cap, hs, csp] = await Promise.all([
         fetchSheet(id,'Painel 2026',44),
         fetchSheet(id,'Cockpit Overview',43),
         fetchSheet(id,'One Time',11),
@@ -913,9 +913,10 @@ async function connectSheets(silent=false) {
         fetchSheet(id,'Plano de Ação',14),
         fetchSheet(id,'Capacidade',5),
         fetchSheet(id,'Health Score',91),
+        fetchSheet(id,'CSP',4),
       ]);
       return { squad:cfg.squad, painel2026:p2026, cockpit:tag(ck,cfg.squad), oneTime:tag(ot,cfg.squad),
-        healthPeople:hp, pdsa, planoAcao:tag(pa,cfg.squad), capacidade:tag(cap,cfg.squad), healthScore:tag(hs,cfg.squad) };
+        healthPeople:hp, pdsa, planoAcao:tag(pa,cfg.squad), capacidade:tag(cap,cfg.squad), healthScore:tag(hs,cfg.squad), csp };
     }));
     const valid = sources.filter(Boolean);
     if (!valid.length) { setSt('err','Nenhum ID válido encontrado.'); return; }
@@ -935,6 +936,7 @@ async function connectSheets(silent=false) {
     setSt('ok','Conectado · '+new Date().toLocaleTimeString('pt-BR')+
       (valid.length>1?' ('+valid.length+' planilhas)':''));
     buildSquadMaps();
+    buildCspData();
     renderAll();
   } catch(e) { setSt('err','Erro: '+e.message); console.error(e); }
 }
@@ -1241,13 +1243,20 @@ function cspEnsureMonths(data) {
 }
 
 function cspGetSquadSummary(sq, mi) {
-  const data = cspGetSquad(sq);
-  cspEnsureMonths(data);
-  const m = data.months[mi] || {folha:0,recRec:0,recPon:0};
+  // Prefer sheet data, fallback to localStorage
+  const sheetMonths = STATE._cspSheet?.[sq];
+  let m;
+  if (sheetMonths && sheetMonths[mi]?.fromSheet) {
+    m = sheetMonths[mi];
+  } else {
+    const data = cspGetSquad(sq);
+    cspEnsureMonths(data);
+    m = data.months[mi] || {folha:0,recRec:0,recPon:0};
+  }
   const totalRec = (m.recRec||0) + (m.recPon||0);
   const cspTotal = totalRec > 0 ? (m.folha||0) / totalRec * 100 : null;
   const cspRec   = (m.recRec||0) > 0 ? (m.folha||0) / (m.recRec||0) * 100 : null;
-  return { folha: m.folha||0, recRec: m.recRec||0, recPon: m.recPon||0, totalRec, cspTotal, cspRec };
+  return { folha: m.folha||0, recRec: m.recRec||0, recPon: m.recPon||0, totalRec, cspTotal, cspRec, fromSheet: !!m.fromSheet };
 }
 
 function pctColor(v) { return v < CSP_EFF_THRESHOLD ? '#059669' : v < 50 ? '#D97706' : '#DC2626'; }
@@ -1799,6 +1808,60 @@ document.querySelectorAll('.tab').forEach(t=>{
 // ══════════════════════════════════════════
 // CSP — CUSTO DE SERVIR POR CLIENTE
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// CSP SHEET PARSER
+// ══════════════════════════════════════════
+const CSP_MONTH_NAMES_MAP = {
+  'janeiro':0,'fevereiro':1,'março':2,'marco':2,'abril':3,'maio':4,'junho':5,
+  'julho':6,'agosto':7,'setembro':8,'outubro':9,'novembro':10,'dezembro':11,
+  'jan':0,'fev':1,'mar':2,'abr':3,'mai':4,'jun':5,
+  'jul':6,'ago':7,'set':8,'out':9,'nov':10,'dez':11,
+};
+
+function cspParseSheet(rows) {
+  // Returns array[12] of {folha, recRec, recPon} or null if no data
+  if (!rows || !rows.length) return null;
+
+  // Skip header row if first cell looks like a label
+  const firstCell = String(rows[0]?.[0]||'').toLowerCase().trim();
+  const isHeader = /^m[eê]s|^month|^período/i.test(firstCell) || firstCell === 'mês';
+  const dataRows = isHeader ? rows.slice(1) : rows;
+
+  if (!dataRows.length) return null;
+
+  const result = Array(12).fill(null).map(() => ({folha:0, recRec:0, recPon:0, fromSheet:true}));
+  let hasAny = false;
+
+  dataRows.forEach((r, idx) => {
+    // Detect month from column 0
+    const mCell = String(r[0]||'').toLowerCase().trim();
+    const mi = CSP_MONTH_NAMES_MAP[mCell] ?? (idx < 12 ? idx : -1);
+    if (mi < 0 || mi > 11) return;
+
+    const folha  = parseBR(r[1]);
+    const recRec = parseBR(r[2]);
+    const recPon = parseBR(r[3]);
+
+    if (folha || recRec || recPon) {
+      result[mi] = { folha, recRec, recPon, fromSheet: true };
+      hasAny = true;
+    }
+  });
+
+  return hasAny ? result : null;
+}
+
+// STATE._cspSheet = { Alpha: Array(12)|null, Midas: Array(12)|null }
+function buildCspData() {
+  STATE._cspSheet = {};
+  (STATE._sources || []).forEach(src => {
+    if ((src.squad === 'Alpha' || src.squad === 'Midas') && src.csp?.length) {
+      const parsed = cspParseSheet(src.csp);
+      if (parsed) STATE._cspSheet[src.squad] = parsed;
+    }
+  });
+}
+
 const CSP_HASH = 'c38cf44c5c2e4c0fe5e2b4b982e3af73';
 const CSP_KEY  = 'csp_data_v2';
 const CSP_SQUADS = {
@@ -1888,9 +1951,15 @@ function renderCspSquad() {
 
 // ── Alpha / Midas: month-by-month ──────────────────────────────
 function renderCspMonthly(sq, isColor, panel) {
+  const sheetData = STATE._cspSheet?.[sq];
+  const hasSheet = !!sheetData;
   const data = cspGetSquad(sq);
   cspEnsureMonths(data);
-  const months = data.months;
+  // Merge: sheet data wins where available, localStorage fills gaps
+  const months = Array(12).fill(null).map((_,i) => {
+    if (sheetData?.[i]?.fromSheet) return sheetData[i];
+    return data.months[i] || {folha:0,recRec:0,recPon:0};
+  });
   const curM = new Date().getMonth();
 
   // Compute per-month totals
@@ -1901,7 +1970,7 @@ function renderCspMonthly(sq, isColor, panel) {
     const total  = recRec + recPon;
     const cspTot = total  > 0 ? folha / total  * 100 : null;
     const cspRec = recRec > 0 ? folha / recRec * 100 : null;
-    return { i, folha, recRec, recPon, total, cspTot, cspRec };
+    return { i, folha, recRec, recPon, total, cspTot, cspRec, fromSheet: !!m.fromSheet };
   });
 
   // Summary for current month
@@ -1921,6 +1990,16 @@ function renderCspMonthly(sq, isColor, panel) {
 
   panel.innerHTML = `
   <div style="border-top:3px solid ${isColor};margin-bottom:16px"></div>
+
+  ${hasSheet
+    ? `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📊</span>
+        <span><strong>Dados carregados da planilha Google Sheets — aba "CSP".</strong> Edite diretamente na planilha para atualizar para todos.</span>
+       </div>`
+    : `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">✏️</span>
+        <span><strong>Preenchimento manual (local).</strong> Crie uma aba "CSP" na planilha do ${sq} para os dados ficarem disponíveis para todos. <a href="#" style="color:#D97706;font-weight:700" onclick="cspShowSheetHelp(event)">Ver formato →</a></span>
+       </div>`}
 
   <!-- Summary cards (top) -->
   <div class="csp-metrics" style="margin-bottom:18px">
@@ -1966,28 +2045,26 @@ function renderCspMonthly(sq, isColor, panel) {
           </tr>
         </thead>
         <tbody>
-          ${rows.map(r=>`
+          ${rows.map(r=>{
+            const fromSheet = !!r.fromSheet;
+            const roAttr = fromSheet ? 'readonly style="background:#F9FAFB;cursor:default;border-color:#E5E7EB"' : `style="border-color:${isColor}30"`;
+            const roInp = (field, val) => fromSheet
+              ? `<td style="text-align:right;color:${val>0?'inherit':'#9CA3AF'}">${val>0?fmtBR(val):'—'}</td>`
+              : `<td><input class="csp-month-in" type="text" inputmode="decimal" placeholder="0,00"
+                    value="${val>0?fmtBR(val):''}"
+                    oninput="cspSaveMonth('${sq}',${r.i},'${field}',parseBR(this.value))"
+                    onblur="cspBlurFmt(this);cspSaveMonth('${sq}',${r.i},'${field}',parseBR(this.value))"
+                    ${roAttr}/></td>`;
+            return `
           <tr class="${r.i===curM?'csp-cur-m':''}">
-            <td><strong style="color:${r.i===curM?isColor:'inherit'}">${CSP_MNS[r.i]}${r.i===curM?' ◀':''}</strong></td>
-            <td><input class="csp-month-in" type="text" inputmode="decimal" placeholder="0,00"
-                  value="${r.folha>0?fmtBR(r.folha):''}"
-                  oninput="cspSaveMonth('${sq}',${r.i},'folha',parseBR(this.value))"
-                  onblur="cspBlurFmt(this);cspSaveMonth('${sq}',${r.i},'folha',parseBR(this.value))"
-                  style="border-color:${isColor}30"/></td>
-            <td><input class="csp-month-in" type="text" inputmode="decimal" placeholder="0,00"
-                  value="${r.recRec>0?fmtBR(r.recRec):''}"
-                  oninput="cspSaveMonth('${sq}',${r.i},'recRec',parseBR(this.value))"
-                  onblur="cspBlurFmt(this);cspSaveMonth('${sq}',${r.i},'recRec',parseBR(this.value))"
-                  style="border-color:${isColor}30"/></td>
-            <td><input class="csp-month-in" type="text" inputmode="decimal" placeholder="0,00"
-                  value="${r.recPon>0?fmtBR(r.recPon):''}"
-                  oninput="cspSaveMonth('${sq}',${r.i},'recPon',parseBR(this.value))"
-                  onblur="cspBlurFmt(this);cspSaveMonth('${sq}',${r.i},'recPon',parseBR(this.value))"
-                  style="border-color:${isColor}30"/></td>
+            <td><strong style="color:${r.i===curM?isColor:'inherit'}">${CSP_MNS[r.i]}${r.i===curM?' ◀':''}</strong>${fromSheet?'<span style="font-size:9px;color:#059669;margin-left:4px">●</span>':''}</td>
+            ${roInp('folha', r.folha)}
+            ${roInp('recRec', r.recRec)}
+            ${roInp('recPon', r.recPon)}
             ${r.total>0?`<td style="text-align:right"><strong>${fmt(r.total)}</strong></td>`:'<td style="color:#9CA3AF;text-align:right">—</td>'}
             ${pctCell(r.cspTot)}
             ${pctCell(r.cspRec)}
-          </tr>`).join('')}
+          </tr>`;}).join('')}
         </tbody>
         <tfoot>
           <tr class="csp-tfoot">
@@ -2144,6 +2221,25 @@ function cspAddPessoa_remove(idx) {
 }
 
 function cspRemovePessoa(idx) { cspAddPessoa_remove(idx); }
+
+function cspShowSheetHelp(e) {
+  e.preventDefault();
+  alert(`Crie uma aba chamada "CSP" na planilha do squad com este formato:
+
+Coluna A     | Coluna B      | Coluna C             | Coluna D
+Mês          | Folha         | Receita Recorrente   | Serviços Pontuais
+Janeiro      | 25000         | 60000                | 10000
+Fevereiro    | 27000         | 65000                | 5000
+Março        | ...           | ...                  | ...
+...          | ...           | ...                  | ...
+Dezembro     | ...           | ...                  | ...
+
+• A primeira linha pode ser o cabeçalho ou já o primeiro mês
+• Os valores podem ter ponto e vírgula (ex: 44.361,29 ou 44361.29)
+• Compartilhe a planilha como "Qualquer pessoa com o link pode ver"
+
+Após criar a aba, clique em Conectar no dashboard para carregar os dados.`);
+}
 </script>
 </body>
 </html>
