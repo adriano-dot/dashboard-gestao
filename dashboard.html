@@ -208,6 +208,41 @@
   .csp-del{background:none;border:none;cursor:pointer;color:#9CA3AF;padding:2px 6px;border-radius:4px;font-size:13px}
   .csp-del:hover{color:#DC2626;background:#FEE2E2}
 
+  /* ── CSP MONTHLY ─────────────────────────── */
+  .csp-month-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .csp-month-tbl th{background:#FAFAFA;padding:7px 9px;font-weight:700;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+  .csp-month-tbl td{padding:5px 7px;border-bottom:1px solid #F9FAFB;vertical-align:middle}
+  .csp-month-tbl tr.csp-cur-m td{background:#FFFBEB}
+  .csp-month-tbl tr.csp-cur-m .csp-month-in{border-color:#FDE68A}
+  .csp-month-in{width:100%;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none;min-width:90px;background:#fff}
+  .csp-month-in:focus{border-color:var(--v4);background:#fff}
+  .csp-tfoot td{font-weight:700;background:#F9FAFB;border-top:2px solid var(--border);padding:7px 9px;font-size:12px}
+  .csp-pct-ok{color:#059669;font-weight:700}
+  .csp-pct-warn{color:#D97706;font-weight:700}
+  .csp-pct-err{color:#DC2626;font-weight:700}
+
+  /* ── OVERVIEW SQUAD CARDS ───────────────── */
+  .ov-sq-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .ov-sq-total{background:var(--dark2);border-radius:12px;padding:18px 22px;color:#fff;flex:1;min-width:220px}
+  .ov-sq-total-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:6px}
+  .ov-sq-total-val{font-size:32px;font-weight:800;color:#fff;line-height:1}
+  .ov-sq-total-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:5px}
+  .ov-sq-card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:16px 20px;flex:1;min-width:240px;position:relative;overflow:hidden}
+  .ov-sq-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+  .ov-sq-card-alpha::before{background:var(--alpha)}
+  .ov-sq-card-midas::before{background:var(--midas)}
+  .ov-sq-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:4px}
+  .ov-sq-val{font-size:24px;font-weight:800;color:var(--text);line-height:1.1}
+  .ov-sq-sub{font-size:11px;color:var(--muted);margin-top:3px}
+  .ov-sq-metrics{display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+  .ov-sq-metric{flex:1}
+  .ov-sq-metric-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .ov-sq-metric-val{font-size:13px;font-weight:700;color:var(--text);margin-top:2px}
+  .ov-sq-eff{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;margin-top:10px}
+  .ov-sq-eff-ok{background:#D1FAE5;color:#065F46;border:1px solid #A7F3D0}
+  .ov-sq-eff-err{background:#FEE2E2;color:#991B1B;border:1px solid #FECACA}
+  .ov-sq-eff-na{background:#F3F4F6;color:#6B7280;border:1px solid #E5E7EB}
+
   /* ── DATE FILTER ───────────────────────── */
   .date-in{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500;border:1.5px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8);background:rgba(255,255,255,.07);font-family:inherit;outline:none;cursor:pointer;min-width:108px;height:26px}
   .date-in::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.45;cursor:pointer}
@@ -398,6 +433,11 @@
     </div>
     <div class="sec">Retenção &amp; Saúde</div>
     <div class="kgrid" id="kpi-ret"></div>
+
+    <div class="sec" id="ov-csp-sec">Eficiência por Squad — CSP</div>
+    <div id="ov-csp-section">
+      <div class="ov-sq-row" id="ov-csp-cards"></div>
+    </div>
   </div>
 </div>
 
@@ -1142,6 +1182,102 @@ function renderOverview() {
     kprog('ROI > 1',(roi.real*100).toFixed(0)+'%','Meta: '+(roi.meta*100).toFixed(0)+'%',pct(roi.real,roi.meta)),
     kcard('NPS',nps.real||'—','Meta: '+nps.meta,badge(nps.real>=nps.meta?'g':'y',nps.real>=nps.meta?'✓ Meta':'→ Em progresso')),
   ].join('');
+
+  // ── CSP Overview ─────────────────────────────────────
+  renderOvCSP();
+}
+
+function cspActiveMi() {
+  // If date filter set, use month of "from" date; else current month
+  if (DATE_FILTER.from) return DATE_FILTER.from.getMonth();
+  return new Date().getMonth();
+}
+
+function cspEnsureMonths(data) {
+  if (!data.months || data.months.length !== 12) {
+    const prev = data.months || [];
+    data.months = Array(12).fill(null).map((_,i) => ({
+      folha:  Number(prev[i]?.folha)  || 0,
+      recRec: Number(prev[i]?.recRec) || 0,
+      recPon: Number(prev[i]?.recPon) || 0,
+    }));
+  }
+  return data;
+}
+
+function cspGetSquadSummary(sq, mi) {
+  const data = cspGetSquad(sq);
+  cspEnsureMonths(data);
+  const m = data.months[mi] || {folha:0,recRec:0,recPon:0};
+  const totalRec = (m.recRec||0) + (m.recPon||0);
+  const cspTotal = totalRec > 0 ? (m.folha||0) / totalRec * 100 : null;
+  const cspRec   = (m.recRec||0) > 0 ? (m.folha||0) / (m.recRec||0) * 100 : null;
+  return { folha: m.folha||0, recRec: m.recRec||0, recPon: m.recPon||0, totalRec, cspTotal, cspRec };
+}
+
+function pctColor(v) { return v < CSP_EFF_THRESHOLD ? '#059669' : v < 50 ? '#D97706' : '#DC2626'; }
+function pctCls(v)   { return v < CSP_EFF_THRESHOLD ? 'csp-pct-ok' : v < 50 ? 'csp-pct-warn' : 'csp-pct-err'; }
+
+function renderOvCSP() {
+  const mi = cspActiveMi();
+  const monthName = CSP_MN[mi];
+  const alphaS = cspGetSquadSummary('Alpha', mi);
+  const midasS = cspGetSquadSummary('Midas', mi);
+  const totalRec = alphaS.totalRec + midasS.totalRec;
+  const totalFolha = alphaS.folha + midasS.folha;
+  const totalRecRec = alphaS.recRec + midasS.recRec;
+  const totalPon = alphaS.recPon + midasS.recPon;
+  const hasData = totalRec > 0 || totalFolha > 0;
+
+  const effBadge = (s) => {
+    if (s.totalRec === 0 && s.folha === 0) return `<span class="ov-sq-eff ov-sq-eff-na">— Sem dados</span>`;
+    if (s.cspTotal === null) return `<span class="ov-sq-eff ov-sq-eff-na">— Sem receita</span>`;
+    const ok = s.cspTotal <= CSP_EFF_THRESHOLD;
+    return `<span class="ov-sq-eff ${ok?'ov-sq-eff-ok':'ov-sq-eff-err'}">${ok?'✓ Eficiente':'⚠ Ineficiente'}</span>`;
+  };
+
+  const sqCard = (sq, s, colorCls) => `
+    <div class="ov-sq-card ${colorCls}">
+      <div class="ov-sq-lbl">${sq} · ${monthName}</div>
+      <div class="ov-sq-val">${fmt(s.totalRec)}</div>
+      <div class="ov-sq-sub">Receita total gerada</div>
+      <div class="ov-sq-metrics">
+        <div class="ov-sq-metric">
+          <div class="ov-sq-metric-lbl">Rec. Recorrente</div>
+          <div class="ov-sq-metric-val">${fmt(s.recRec)}</div>
+        </div>
+        <div class="ov-sq-metric">
+          <div class="ov-sq-metric-lbl">Serv. Pontuais</div>
+          <div class="ov-sq-metric-val">${fmt(s.recPon)}</div>
+        </div>
+        <div class="ov-sq-metric">
+          <div class="ov-sq-metric-lbl">Folha do Time</div>
+          <div class="ov-sq-metric-val">${fmt(s.folha)}</div>
+        </div>
+        <div class="ov-sq-metric">
+          <div class="ov-sq-metric-lbl">CSP / Total</div>
+          <div class="ov-sq-metric-val ${s.cspTotal!==null?pctCls(s.cspTotal):''}">${s.cspTotal!==null?s.cspTotal.toFixed(1)+'%':'—'}</div>
+        </div>
+        <div class="ov-sq-metric">
+          <div class="ov-sq-metric-lbl">CSP / Recorrente</div>
+          <div class="ov-sq-metric-val ${s.cspRec!==null?pctCls(s.cspRec):''}">${s.cspRec!==null?s.cspRec.toFixed(1)+'%':'—'}</div>
+        </div>
+      </div>
+      ${effBadge(s)}
+    </div>`;
+
+  const totalCard = `
+    <div class="ov-sq-total">
+      <div class="ov-sq-total-lbl">Receita Total Consolidada · ${monthName}</div>
+      <div class="ov-sq-total-val">${fmt(totalRec)}</div>
+      <div class="ov-sq-total-sub">Alpha + Midas · Rec. ${fmt(totalRecRec)} + Pont. ${fmt(totalPon)}</div>
+      ${totalFolha>0?`<div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.6)">Folha consolidada: <strong style="color:#fff">${fmt(totalFolha)}</strong></div>`:''}
+      ${!hasData?`<div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.4)">Insira os dados mensais na aba CSP</div>`:''}
+    </div>`;
+
+  document.getElementById('ov-csp-cards').innerHTML = totalCard
+    + sqCard('Alpha', alphaS, 'ov-sq-card-alpha')
+    + sqCard('Midas', midasS, 'ov-sq-card-midas');
 }
 
 // ══════════════════════════════════════════
@@ -1628,13 +1764,17 @@ document.querySelectorAll('.tab').forEach(t=>{
 // ══════════════════════════════════════════
 // CSP — CUSTO DE SERVIR POR CLIENTE
 // ══════════════════════════════════════════
-const CSP_HASH = 'c38cf44c5c2e4c0fe5e2b4b982e3af73'; // SHA256 not needed; simple comparison after obfuscation
+const CSP_HASH = 'c38cf44c5c2e4c0fe5e2b4b982e3af73';
 const CSP_KEY  = 'csp_data_v2';
 const CSP_SQUADS = {
   Alpha: ['Account','Gestor de Tráfego','Design','Copy','Social Media','Coordenador PE&G'],
   Midas: ['Account','Gestor de Tráfego','Design','Copy','Social Media','Coordenador PE&G'],
   ISaaS: ['Sales Enablement','SDR','BDR','Closer'],
 };
+const CSP_MN = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const CSP_MNS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+// Efficiency threshold: CSP% ≤ this is "Eficiente"
+const CSP_EFF_THRESHOLD = 30;
 let CSP_ACTIVE_SQ = 'Alpha';
 
 function cspCheckPwd(v) { return v === atob('Q2hhdmVzQDE5OTEx'); }
@@ -1702,6 +1842,167 @@ function setCspSquad(btn) {
 
 function renderCspSquad() {
   const sq = CSP_ACTIVE_SQ;
+  const isColor = sq === 'ISaaS' ? '#0891B2' : sq === 'Alpha' ? '#7C3AED' : '#D10000';
+  const panel = document.getElementById('csp-squad-panel');
+  if (sq === 'ISaaS') {
+    renderCspISaaS(isColor, panel);
+  } else {
+    renderCspMonthly(sq, isColor, panel);
+  }
+}
+
+// ── Alpha / Midas: month-by-month ──────────────────────────────
+function renderCspMonthly(sq, isColor, panel) {
+  const data = cspGetSquad(sq);
+  cspEnsureMonths(data);
+  const months = data.months;
+  const curM = new Date().getMonth();
+
+  // Compute per-month totals
+  const rows = months.map((m,i) => {
+    const folha  = Number(m.folha)  || 0;
+    const recRec = Number(m.recRec) || 0;
+    const recPon = Number(m.recPon) || 0;
+    const total  = recRec + recPon;
+    const cspTot = total  > 0 ? folha / total  * 100 : null;
+    const cspRec = recRec > 0 ? folha / recRec * 100 : null;
+    return { i, folha, recRec, recPon, total, cspTot, cspRec };
+  });
+
+  // Summary for current month
+  const cur = rows[curM];
+  const sumFolha  = rows.reduce((s,r)=>s+r.folha,0);
+  const sumRec    = rows.reduce((s,r)=>s+r.recRec,0);
+  const sumPon    = rows.reduce((s,r)=>s+r.recPon,0);
+  const sumTotal  = sumRec + sumPon;
+  const cspTotAno = sumTotal > 0 ? sumFolha / sumTotal * 100 : null;
+  const cspRecAno = sumRec   > 0 ? sumFolha / sumRec   * 100 : null;
+
+  // Helper for % cell
+  const pctCell = (v) => v === null
+    ? '<td style="color:#9CA3AF;text-align:center">—</td>'
+    : `<td style="text-align:center" class="${pctCls(v)}">${v.toFixed(1)}%</td>`;
+  const fmtCell = (v) => v === 0 ? '<td style="color:#9CA3AF;text-align:right">—</td>' : `<td style="text-align:right"><strong>${fmt(v)}</strong></td>`;
+
+  panel.innerHTML = `
+  <div style="border-top:3px solid ${isColor};margin-bottom:16px"></div>
+
+  <!-- Summary cards (top) -->
+  <div class="csp-metrics" style="margin-bottom:18px">
+    <div class="csp-mcard ${cur.cspRec!==null?(cur.cspRec<=CSP_EFF_THRESHOLD?'csp-mcard-ok':cur.cspRec<50?'csp-mcard-warn':'csp-mcard-err'):'csp-mcard-blue'}">
+      <div class="csp-mlbl">CSP / Rec. Recorrente · ${CSP_MNS[curM]}</div>
+      <div class="csp-mval">${cur.cspRec!==null?cur.cspRec.toFixed(1)+'%':'—'}</div>
+      <div class="csp-msub">${cur.cspRec!==null?(cur.cspRec<=CSP_EFF_THRESHOLD?'✓ Eficiente':cur.cspRec<50?'⚠ Atenção':'⛔ Ineficiente'):'Sem dados ainda'}</div>
+    </div>
+    <div class="csp-mcard ${cur.cspTot!==null?(cur.cspTot<=CSP_EFF_THRESHOLD?'csp-mcard-ok':cur.cspTot<50?'csp-mcard-warn':'csp-mcard-err'):'csp-mcard-blue'}">
+      <div class="csp-mlbl">CSP / Receita Total · ${CSP_MNS[curM]}</div>
+      <div class="csp-mval">${cur.cspTot!==null?cur.cspTot.toFixed(1)+'%':'—'}</div>
+      <div class="csp-msub">${cur.cspTot!==null?(cur.cspTot<=CSP_EFF_THRESHOLD?'✓ Eficiente':cur.cspTot<50?'⚠ Atenção':'⛔ Ineficiente'):'Sem dados ainda'}</div>
+    </div>
+    <div class="csp-mcard csp-mcard-blue">
+      <div class="csp-mlbl">Receita Total · ${CSP_MNS[curM]}</div>
+      <div class="csp-mval">${cur.total>0?fmt(cur.total):'—'}</div>
+      <div class="csp-msub">Rec. ${fmt(cur.recRec)} + Pont. ${fmt(cur.recPon)}</div>
+    </div>
+    <div class="csp-mcard csp-mcard-blue">
+      <div class="csp-mlbl">Folha do Time · ${CSP_MNS[curM]}</div>
+      <div class="csp-mval">${cur.folha>0?fmt(cur.folha):'—'}</div>
+      <div class="csp-msub">Custo mensal</div>
+    </div>
+  </div>
+
+  <!-- Month-by-month input grid -->
+  <div class="tcard" style="margin-bottom:18px">
+    <div class="thdrow" style="justify-content:space-between">
+      <span>Acompanhamento Mês a Mês — <strong style="color:${isColor}">${sq}</strong> 2026</span>
+      <span class="kbadge gr">Jan → Dez</span>
+    </div>
+    <div class="tw">
+      <table class="csp-month-tbl">
+        <thead>
+          <tr>
+            <th style="min-width:44px">Mês</th>
+            <th>Custo da Folha (R$)</th>
+            <th>Rec. Recorrente (R$)</th>
+            <th>Serv. Pontuais (R$)</th>
+            <th style="min-width:110px">Total Receita</th>
+            <th style="min-width:90px">CSP / Total</th>
+            <th style="min-width:90px">CSP / Rec.</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r=>`
+          <tr class="${r.i===curM?'csp-cur-m':''}">
+            <td><strong style="color:${r.i===curM?isColor:'inherit'}">${CSP_MNS[r.i]}${r.i===curM?' ◀':''}</strong></td>
+            <td><input class="csp-month-in" type="number" min="0" placeholder="0"
+                  value="${r.folha||''}"
+                  oninput="cspSaveMonth('${sq}',${r.i},'folha',+this.value)"
+                  style="border-color:${isColor}30"/></td>
+            <td><input class="csp-month-in" type="number" min="0" placeholder="0"
+                  value="${r.recRec||''}"
+                  oninput="cspSaveMonth('${sq}',${r.i},'recRec',+this.value)"
+                  style="border-color:${isColor}30"/></td>
+            <td><input class="csp-month-in" type="number" min="0" placeholder="0"
+                  value="${r.recPon||''}"
+                  oninput="cspSaveMonth('${sq}',${r.i},'recPon',+this.value)"
+                  style="border-color:${isColor}30"/></td>
+            ${r.total>0?`<td style="text-align:right"><strong>${fmt(r.total)}</strong></td>`:'<td style="color:#9CA3AF;text-align:right">—</td>'}
+            ${pctCell(r.cspTot)}
+            ${pctCell(r.cspRec)}
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr class="csp-tfoot">
+            <td>Totais</td>
+            ${fmtCell(sumFolha)}
+            ${fmtCell(sumRec)}
+            ${fmtCell(sumPon)}
+            ${fmtCell(sumTotal)}
+            ${pctCell(cspTotAno)}
+            ${pctCell(cspRecAno)}
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bottom summary: month-by-month CSP over total -->
+  <div class="tcard">
+    <div class="thdrow">Resumo — CSP sobre Receita Total (mês a mês)</div>
+    <div class="tw">
+      <table class="csp-month-tbl">
+        <thead>
+          <tr>
+            <th>Mês</th>
+            <th style="min-width:110px">Receita Total</th>
+            <th style="min-width:90px">Folha</th>
+            <th style="min-width:90px">CSP / Total</th>
+            <th style="min-width:90px">CSP / Recorrente</th>
+            <th>Eficiência</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.filter(r=>r.total>0||r.folha>0).map(r=>{
+            const effOk = r.cspTot !== null && r.cspTot <= CSP_EFF_THRESHOLD;
+            return `<tr>
+              <td><strong>${CSP_MN[r.i]}</strong></td>
+              <td style="text-align:right">${r.total>0?fmt(r.total):'—'}</td>
+              <td style="text-align:right">${r.folha>0?fmt(r.folha):'—'}</td>
+              ${pctCell(r.cspTot)}
+              ${pctCell(r.cspRec)}
+              <td>${r.cspTot===null?'<span class="kbadge gr">Sem dados</span>'
+                : effOk?'<span class="kbadge g">✓ Eficiente</span>'
+                :'<span class="kbadge r">⚠ Ineficiente</span>'}</td>
+            </tr>`;}).join('')||'<tr><td colspan="6" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum dado inserido ainda — preencha a tabela acima</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── ISaaS: team management (preserved) ─────────────────────────
+function renderCspISaaS(isColor, panel) {
+  const sq = 'ISaaS';
   const data = cspGetSquad(sq);
   const funcs = CSP_SQUADS[sq] || [];
   const liq = data.bruto * (1 - (data.royalties || 0) / 100);
@@ -1710,13 +2011,9 @@ function renderCspSquad() {
   const csp      = projTot > 0 ? folhaTot / projTot : 0;
   const cspPct   = liq > 0 ? (folhaTot / liq * 100) : 0;
   const cspCls   = cspPct < 30 ? 'csp-mcard-ok' : cspPct < 50 ? 'csp-mcard-warn' : 'csp-mcard-err';
-  const isColor  = sq === 'ISaaS' ? '#0891B2' : sq === 'Alpha' ? '#7C3AED' : '#D10000';
 
-  const panel = document.getElementById('csp-squad-panel');
   panel.innerHTML = `
-  <div style="border-top:3px solid ${isColor};border-radius:0 0 0 0;margin-bottom:14px"></div>
-
-  <!-- Financeiro -->
+  <div style="border-top:3px solid ${isColor};margin-bottom:14px"></div>
   <div class="csp-fin">
     <div class="csp-fin-group">
       <div class="csp-fin-lbl">Faturamento Bruto</div>
@@ -1735,81 +2032,46 @@ function renderCspSquad() {
       <div class="csp-fin-result-val" id="csp-roy-val" style="color:#D97706">${fmt(data.bruto * (data.royalties||0) / 100)}</div>
     </div>
   </div>
-
-  <!-- CSP Metrics -->
   <div class="csp-metrics">
-    <div class="csp-mcard csp-mcard-blue">
-      <div class="csp-mlbl">Total Folha</div>
-      <div class="csp-mval">${fmt(folhaTot)}</div>
-      <div class="csp-msub">${(data.pessoas||[]).length} pessoas</div>
-    </div>
-    <div class="csp-mcard ${cspCls}">
-      <div class="csp-mlbl">% Folha / Líquida</div>
-      <div class="csp-mval">${liq>0?cspPct.toFixed(1)+'%':'—'}</div>
-      <div class="csp-msub">${cspPct<30?'✓ Saudável':cspPct<50?'⚠ Atenção':'⛔ Alto'}</div>
-    </div>
-    <div class="csp-mcard csp-mcard-blue">
-      <div class="csp-mlbl">CSP por Projeto</div>
-      <div class="csp-mval">${projTot>0?fmt(csp):'—'}</div>
-      <div class="csp-msub">${projTot} projetos ativos</div>
-    </div>
-    <div class="csp-mcard csp-mcard-blue">
-      <div class="csp-mlbl">Receita Líquida</div>
-      <div class="csp-mval">${fmt(liq)}</div>
-      <div class="csp-msub">Bruto − Royalties</div>
-    </div>
+    <div class="csp-mcard csp-mcard-blue"><div class="csp-mlbl">Total Folha</div><div class="csp-mval">${fmt(folhaTot)}</div><div class="csp-msub">${(data.pessoas||[]).length} pessoas</div></div>
+    <div class="csp-mcard ${cspCls}"><div class="csp-mlbl">% Folha / Líquida</div><div class="csp-mval">${liq>0?cspPct.toFixed(1)+'%':'—'}</div><div class="csp-msub">${cspPct<30?'✓ Saudável':cspPct<50?'⚠ Atenção':'⛔ Alto'}</div></div>
+    <div class="csp-mcard csp-mcard-blue"><div class="csp-mlbl">CSP por Projeto</div><div class="csp-mval">${projTot>0?fmt(csp):'—'}</div><div class="csp-msub">${projTot} projetos ativos</div></div>
+    <div class="csp-mcard csp-mcard-blue"><div class="csp-mlbl">Receita Líquida</div><div class="csp-mval">${fmt(liq)}</div><div class="csp-msub">Bruto − Royalties</div></div>
   </div>
-
-  <!-- Add member form -->
-  <div class="sec">Time — ${sq}</div>
+  <div class="sec">Time — ISaaS</div>
   <div class="csp-add-row">
-    <div class="csp-add-group">
-      <div class="csp-add-lbl">Nome</div>
-      <input class="csp-add-in" id="csp-new-nome" placeholder="Nome completo" style="min-width:140px"/>
-    </div>
-    <div class="csp-add-group">
-      <div class="csp-add-lbl">Função</div>
-      <select class="csp-add-in" id="csp-new-func">
-        ${funcs.map(f=>`<option>${f}</option>`).join('')}
-      </select>
-    </div>
-    <div class="csp-add-group">
-      <div class="csp-add-lbl">Projetos</div>
-      <input class="csp-add-in" id="csp-new-proj" type="number" min="0" placeholder="0" style="width:70px"/>
-    </div>
-    <div class="csp-add-group">
-      <div class="csp-add-lbl">Remuneração (R$)</div>
-      <input class="csp-add-in" id="csp-new-rem" type="number" min="0" placeholder="0" style="width:120px"/>
-    </div>
+    <div class="csp-add-group"><div class="csp-add-lbl">Nome</div><input class="csp-add-in" id="csp-new-nome" placeholder="Nome completo" style="min-width:140px"/></div>
+    <div class="csp-add-group"><div class="csp-add-lbl">Função</div><select class="csp-add-in" id="csp-new-func">${funcs.map(f=>`<option>${f}</option>`).join('')}</select></div>
+    <div class="csp-add-group"><div class="csp-add-lbl">Projetos</div><input class="csp-add-in" id="csp-new-proj" type="number" min="0" placeholder="0" style="width:70px"/></div>
+    <div class="csp-add-group"><div class="csp-add-lbl">Remuneração (R$)</div><input class="csp-add-in" id="csp-new-rem" type="number" min="0" placeholder="0" style="width:120px"/></div>
     <button class="btn btn-v4" onclick="cspAddPessoa()" style="height:32px;white-space:nowrap">+ Adicionar</button>
   </div>
-
-  <!-- Team table -->
   <div class="tcard csp-team-tbl">
-    <div class="thdrow">
-      Equipe ${sq}
-      <span class="kbadge b">${(data.pessoas||[]).length} pessoas · ${projTot} projetos</span>
-    </div>
+    <div class="thdrow">Equipe ISaaS <span class="kbadge b">${(data.pessoas||[]).length} pessoas · ${projTot} projetos</span></div>
     <div class="tw"><table>
-      <thead><tr>
-        <th>Nome</th><th>Função</th><th>Projetos</th><th>Remuneração</th><th>% da Folha</th><th></th>
-      </tr></thead>
+      <thead><tr><th>Nome</th><th>Função</th><th>Projetos</th><th>Remuneração</th><th>% da Folha</th><th></th></tr></thead>
       <tbody id="csp-tb">
         ${(data.pessoas||[]).length===0
           ? '<tr><td colspan="6" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum membro adicionado ainda</td></tr>'
-          : (data.pessoas||[]).map((p,i)=>`
-          <tr>
-            <td><strong>${p.nome||'—'}</strong></td>
-            <td><span class="kbadge gr">${p.func||'—'}</span></td>
-            <td style="text-align:center">${p.proj||0}</td>
-            <td><strong>${fmt(p.rem)}</strong></td>
-            <td style="color:${folhaTot>0&&(p.rem/folhaTot*100)>30?'#D97706':'#059669'}">${folhaTot>0?(p.rem/folhaTot*100).toFixed(1)+'%':'—'}</td>
-            <td><button class="csp-del" onclick="cspRemovePessoa(${i})" title="Remover">✕</button></td>
-          </tr>`).join('')
-        }
+          : (data.pessoas||[]).map((p,i)=>`<tr>
+              <td><strong>${p.nome||'—'}</strong></td>
+              <td><span class="kbadge gr">${p.func||'—'}</span></td>
+              <td style="text-align:center">${p.proj||0}</td>
+              <td><strong>${fmt(p.rem)}</strong></td>
+              <td style="color:${folhaTot>0&&(p.rem/folhaTot*100)>30?'#D97706':'#059669'}">${folhaTot>0?(p.rem/folhaTot*100).toFixed(1)+'%':'—'}</td>
+              <td><button class="csp-del" onclick="cspAddPessoa_remove(${i})" title="Remover">✕</button></td>
+            </tr>`).join('')}
       </tbody>
     </table></div>
   </div>`;
+}
+
+function cspSaveMonth(sq, mi, field, val) {
+  const d = cspGetSquad(sq);
+  cspEnsureMonths(d);
+  d.months[mi][field] = isNaN(val) ? 0 : val;
+  cspSetSquad(sq, d);
+  renderCspSquad();
 }
 
 function cspUpdateFin() {
@@ -1818,12 +2080,6 @@ function cspUpdateFin() {
   data.bruto = Number(document.getElementById('csp-bruto')?.value) || 0;
   data.royalties = Number(document.getElementById('csp-roy')?.value) ?? 15;
   cspSetSquad(sq, data);
-  const liq = data.bruto * (1 - data.royalties / 100);
-  const el = document.getElementById('csp-liq-val');
-  const er = document.getElementById('csp-roy-val');
-  if (el) el.textContent = fmt(liq);
-  if (er) er.textContent = fmt(data.bruto * data.royalties / 100);
-  // re-render metrics only
   renderCspSquad();
 }
 
@@ -1841,13 +2097,15 @@ function cspAddPessoa() {
   renderCspSquad();
 }
 
-function cspRemovePessoa(idx) {
+function cspAddPessoa_remove(idx) {
   const sq = CSP_ACTIVE_SQ;
   const data = cspGetSquad(sq);
   data.pessoas.splice(idx, 1);
   cspSetSquad(sq, data);
   renderCspSquad();
 }
+
+function cspRemovePessoa(idx) { cspAddPessoa_remove(idx); }
 </script>
 </body>
 </html>
