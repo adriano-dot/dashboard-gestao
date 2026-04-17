@@ -1306,9 +1306,11 @@ function cspGetSquadSummary(sq, mi) {
     m = data.months[mi] || {folha:0,recRec:0,recPon:0};
   }
   const totalRec = (m.recRec||0) + (m.recPon||0);
+  const liqRec   = totalRec * (1 - CSP_ROYALTIES);
   const cspTotal = totalRec > 0 ? (m.folha||0) / totalRec * 100 : null;
   const cspRec   = (m.recRec||0) > 0 ? (m.folha||0) / (m.recRec||0) * 100 : null;
-  return { folha: m.folha||0, recRec: m.recRec||0, recPon: m.recPon||0, totalRec, cspTotal, cspRec, fromSheet: !!m.fromSheet };
+  const cspLiq   = liqRec   > 0 ? (m.folha||0) / liqRec   * 100 : null;
+  return { folha: m.folha||0, recRec: m.recRec||0, recPon: m.recPon||0, totalRec, liqRec, cspTotal, cspRec, cspLiq, fromSheet: !!m.fromSheet };
 }
 
 function pctColor(v) { return v < CSP_EFF_THRESHOLD ? '#059669' : v < 50 ? '#D97706' : '#DC2626'; }
@@ -1327,9 +1329,9 @@ function renderOvCSP() {
 
   const effBadge = (s) => {
     if (s.totalRec === 0 && s.folha === 0) return `<span class="ov-sq-eff ov-sq-eff-na">— Sem dados</span>`;
-    if (s.cspTotal === null) return `<span class="ov-sq-eff ov-sq-eff-na">— Sem receita</span>`;
-    const ok = s.cspTotal <= CSP_EFF_THRESHOLD;
-    return `<span class="ov-sq-eff ${ok?'ov-sq-eff-ok':'ov-sq-eff-err'}">${ok?'✓ Eficiente':'⚠ Ineficiente'}</span>`;
+    if (s.cspLiq === null) return `<span class="ov-sq-eff ov-sq-eff-na">— Sem receita</span>`;
+    const ok = s.cspLiq <= CSP_EFF_THRESHOLD;
+    return `<span class="ov-sq-eff ${ok?'ov-sq-eff-ok':'ov-sq-eff-err'}">${ok?'✓ Eficiente':'⚠ Ineficiente'} <span style="opacity:.7;font-size:10px">(sobre líq.)</span></span>`;
   };
 
   const sqCard = (sq, s, colorCls) => `
@@ -1355,8 +1357,8 @@ function renderOvCSP() {
           <div class="ov-sq-metric-val ${s.cspTotal!==null?pctCls(s.cspTotal):''}">${s.cspTotal!==null?s.cspTotal.toFixed(1)+'%':'—'}</div>
         </div>
         <div class="ov-sq-metric">
-          <div class="ov-sq-metric-lbl">CSP / Recorrente</div>
-          <div class="ov-sq-metric-val ${s.cspRec!==null?pctCls(s.cspRec):''}">${s.cspRec!==null?s.cspRec.toFixed(1)+'%':'—'}</div>
+          <div class="ov-sq-metric-lbl">CSP / Líquida <span style="opacity:.6">(−15%)</span></div>
+          <div class="ov-sq-metric-val ${s.cspLiq!==null?pctCls(s.cspLiq):''}">${s.cspLiq!==null?s.cspLiq.toFixed(1)+'%':'—'}</div>
         </div>
       </div>
       ${effBadge(s)}
@@ -2018,6 +2020,8 @@ const CSP_SQUADS = {
 };
 const CSP_MN = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const CSP_MNS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+// Royalties padrão aplicado sobre receita total para cálculo do líquido
+const CSP_ROYALTIES = 0.15; // 15%
 // Efficiency threshold: CSP% ≤ this is "Eficiente"
 const CSP_EFF_THRESHOLD = 30;
 let CSP_ACTIVE_SQ = 'Alpha';
@@ -2115,9 +2119,11 @@ function renderCspMonthly(sq, isColor, panel) {
     const recRec = Number(m.recRec) || 0;
     const recPon = Number(m.recPon) || 0;
     const total  = recRec + recPon;
-    const cspTot = total  > 0 ? folha / total  * 100 : null;
+    const liq    = total * (1 - CSP_ROYALTIES); // receita líquida após 15% royalties
+    const cspTot = total > 0 ? folha / total * 100 : null;
     const cspRec = recRec > 0 ? folha / recRec * 100 : null;
-    return { i, folha, recRec, recPon, total, cspTot, cspRec, fromSheet: !!m.fromSheet };
+    const cspLiq = liq   > 0 ? folha / liq    * 100 : null;
+    return { i, folha, recRec, recPon, total, liq, cspTot, cspRec, cspLiq, fromSheet: !!m.fromSheet };
   });
 
   // Summary for current month
@@ -2126,8 +2132,10 @@ function renderCspMonthly(sq, isColor, panel) {
   const sumRec    = rows.reduce((s,r)=>s+r.recRec,0);
   const sumPon    = rows.reduce((s,r)=>s+r.recPon,0);
   const sumTotal  = sumRec + sumPon;
+  const sumLiq    = sumTotal * (1 - CSP_ROYALTIES);
   const cspTotAno = sumTotal > 0 ? sumFolha / sumTotal * 100 : null;
   const cspRecAno = sumRec   > 0 ? sumFolha / sumRec   * 100 : null;
+  const cspLiqAno = sumLiq   > 0 ? sumFolha / sumLiq   * 100 : null;
 
   // Helper for % cell
   const pctCell = (v) => v === null
@@ -2150,20 +2158,20 @@ function renderCspMonthly(sq, isColor, panel) {
 
   <!-- Summary cards (top) -->
   <div class="csp-metrics" style="margin-bottom:18px">
-    <div class="csp-mcard ${cur.cspRec!==null?(cur.cspRec<=CSP_EFF_THRESHOLD?'csp-mcard-ok':cur.cspRec<50?'csp-mcard-warn':'csp-mcard-err'):'csp-mcard-blue'}">
-      <div class="csp-mlbl">CSP / Rec. Recorrente · ${CSP_MNS[curM]}</div>
-      <div class="csp-mval">${cur.cspRec!==null?cur.cspRec.toFixed(1)+'%':'—'}</div>
-      <div class="csp-msub">${cur.cspRec!==null?(cur.cspRec<=CSP_EFF_THRESHOLD?'✓ Eficiente':cur.cspRec<50?'⚠ Atenção':'⛔ Ineficiente'):'Sem dados ainda'}</div>
-    </div>
     <div class="csp-mcard ${cur.cspTot!==null?(cur.cspTot<=CSP_EFF_THRESHOLD?'csp-mcard-ok':cur.cspTot<50?'csp-mcard-warn':'csp-mcard-err'):'csp-mcard-blue'}">
       <div class="csp-mlbl">CSP / Receita Total · ${CSP_MNS[curM]}</div>
       <div class="csp-mval">${cur.cspTot!==null?cur.cspTot.toFixed(1)+'%':'—'}</div>
       <div class="csp-msub">${cur.cspTot!==null?(cur.cspTot<=CSP_EFF_THRESHOLD?'✓ Eficiente':cur.cspTot<50?'⚠ Atenção':'⛔ Ineficiente'):'Sem dados ainda'}</div>
     </div>
+    <div class="csp-mcard ${cur.cspLiq!==null?(cur.cspLiq<=CSP_EFF_THRESHOLD?'csp-mcard-ok':cur.cspLiq<50?'csp-mcard-warn':'csp-mcard-err'):'csp-mcard-blue'}">
+      <div class="csp-mlbl">CSP / Receita Líquida · ${CSP_MNS[curM]}</div>
+      <div class="csp-mval">${cur.cspLiq!==null?cur.cspLiq.toFixed(1)+'%':'—'}</div>
+      <div class="csp-msub">${cur.cspLiq!==null?(cur.cspLiq<=CSP_EFF_THRESHOLD?'✓ Eficiente':cur.cspLiq<50?'⚠ Atenção':'⛔ Ineficiente'):'Sem dados ainda'}<span style="color:#9CA3AF;margin-left:4px;font-size:10px">−15% roy.</span></div>
+    </div>
     <div class="csp-mcard csp-mcard-blue">
-      <div class="csp-mlbl">Receita Total · ${CSP_MNS[curM]}</div>
-      <div class="csp-mval">${cur.total>0?fmt(cur.total):'—'}</div>
-      <div class="csp-msub">Rec. ${fmt(cur.recRec)} + Pont. ${fmt(cur.recPon)}</div>
+      <div class="csp-mlbl">Receita Líquida · ${CSP_MNS[curM]}</div>
+      <div class="csp-mval">${cur.liq>0?fmt(cur.liq):'—'}</div>
+      <div class="csp-msub">Total ${fmt(cur.total)} − 15% roy.</div>
     </div>
     <div class="csp-mcard csp-mcard-blue">
       <div class="csp-mlbl">Folha do Time · ${CSP_MNS[curM]}</div>
@@ -2189,6 +2197,7 @@ function renderCspMonthly(sq, isColor, panel) {
             <th style="min-width:110px">Total Receita</th>
             <th style="min-width:90px">CSP / Total</th>
             <th style="min-width:90px">CSP / Rec.</th>
+            <th style="min-width:90px;color:#D97706">CSP / Líq. <span style="font-weight:400;font-size:9px">(−15%)</span></th>
           </tr>
         </thead>
         <tbody>
@@ -2211,6 +2220,7 @@ function renderCspMonthly(sq, isColor, panel) {
             ${r.total>0?`<td style="text-align:right"><strong>${fmt(r.total)}</strong></td>`:'<td style="color:#9CA3AF;text-align:right">—</td>'}
             ${pctCell(r.cspTot)}
             ${pctCell(r.cspRec)}
+            ${pctCell(r.cspLiq)}
           </tr>`;}).join('')}
         </tbody>
         <tfoot>
@@ -2222,6 +2232,7 @@ function renderCspMonthly(sq, isColor, panel) {
             ${fmtCell(sumTotal)}
             ${pctCell(cspTotAno)}
             ${pctCell(cspRecAno)}
+            ${pctCell(cspLiqAno)}
           </tr>
         </tfoot>
       </table>
@@ -2237,25 +2248,27 @@ function renderCspMonthly(sq, isColor, panel) {
           <tr>
             <th>Mês</th>
             <th style="min-width:110px">Receita Total</th>
+            <th style="min-width:90px">Líquida (−15%)</th>
             <th style="min-width:90px">Folha</th>
             <th style="min-width:90px">CSP / Total</th>
-            <th style="min-width:90px">CSP / Recorrente</th>
+            <th style="min-width:90px;color:#D97706">CSP / Líq.</th>
             <th>Eficiência</th>
           </tr>
         </thead>
         <tbody>
           ${rows.filter(r=>r.total>0||r.folha>0).map(r=>{
-            const effOk = r.cspTot !== null && r.cspTot <= CSP_EFF_THRESHOLD;
+            const effOk = r.cspLiq !== null && r.cspLiq <= CSP_EFF_THRESHOLD;
             return `<tr>
               <td><strong>${CSP_MN[r.i]}</strong></td>
               <td style="text-align:right">${r.total>0?fmt(r.total):'—'}</td>
+              <td style="text-align:right;color:#D97706">${r.liq>0?fmt(r.liq):'—'}</td>
               <td style="text-align:right">${r.folha>0?fmt(r.folha):'—'}</td>
               ${pctCell(r.cspTot)}
-              ${pctCell(r.cspRec)}
-              <td>${r.cspTot===null?'<span class="kbadge gr">Sem dados</span>'
+              ${pctCell(r.cspLiq)}
+              <td>${r.cspLiq===null?'<span class="kbadge gr">Sem dados</span>'
                 : effOk?'<span class="kbadge g">✓ Eficiente</span>'
                 :'<span class="kbadge r">⚠ Ineficiente</span>'}</td>
-            </tr>`;}).join('')||'<tr><td colspan="6" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum dado inserido ainda — preencha a tabela acima</td></tr>'}
+            </tr>`;}).join('')||'<tr><td colspan="7" style="text-align:center;color:#9CA3AF;padding:16px">Nenhum dado inserido ainda — preencha a tabela acima</td></tr>'}
         </tbody>
       </table>
     </div>
