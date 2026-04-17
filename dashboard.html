@@ -231,6 +231,7 @@
   .ov-sq-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
   .ov-sq-card-alpha::before{background:var(--alpha)}
   .ov-sq-card-midas::before{background:var(--midas)}
+  .ov-sq-card-isaas::before{background:var(--isaas)}
   .ov-sq-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:4px}
   .ov-sq-val{font-size:24px;font-weight:800;color:var(--text);line-height:1.1}
   .ov-sq-sub{font-size:11px;color:var(--muted);margin-top:3px}
@@ -1321,10 +1322,11 @@ function renderOvCSP() {
   const monthName = CSP_MN[mi];
   const alphaS = cspGetSquadSummary('Alpha', mi);
   const midasS = cspGetSquadSummary('Midas', mi);
-  const totalRec = alphaS.totalRec + midasS.totalRec;
-  const totalFolha = alphaS.folha + midasS.folha;
-  const totalRecRec = alphaS.recRec + midasS.recRec;
-  const totalPon = alphaS.recPon + midasS.recPon;
+  const isaasS = cspGetSquadSummary('ISaaS', mi);
+  const totalRec = alphaS.totalRec + midasS.totalRec + isaasS.totalRec;
+  const totalFolha = alphaS.folha + midasS.folha + isaasS.folha;
+  const totalRecRec = alphaS.recRec + midasS.recRec + isaasS.recRec;
+  const totalPon = alphaS.recPon + midasS.recPon + isaasS.recPon;
   const hasData = totalRec > 0 || totalFolha > 0;
 
   const effBadge = (s) => {
@@ -1364,18 +1366,23 @@ function renderOvCSP() {
       ${effBadge(s)}
     </div>`;
 
+  const totalLiq = totalRec * (1 - CSP_ROYALTIES);
+  const totalCspLiq = totalLiq > 0 ? (totalFolha / totalLiq * 100) : null;
+
   const totalCard = `
     <div class="ov-sq-total">
       <div class="ov-sq-total-lbl">Receita Total Consolidada · ${monthName}</div>
       <div class="ov-sq-total-val">${fmt(totalRec)}</div>
-      <div class="ov-sq-total-sub">Alpha + Midas · Rec. ${fmt(totalRecRec)} + Pont. ${fmt(totalPon)}</div>
-      ${totalFolha>0?`<div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.6)">Folha consolidada: <strong style="color:#fff">${fmt(totalFolha)}</strong></div>`:''}
+      <div class="ov-sq-total-sub">Alpha + Midas + ISaaS · Rec. ${fmt(totalRecRec)} + Pont. ${fmt(totalPon)}</div>
+      ${totalFolha>0?`<div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,.6)">Folha consolidada: <strong style="color:#fff">${fmt(totalFolha)}</strong></div>`:''}
+      ${totalCspLiq!==null?`<div style="margin-top:4px;font-size:12px;color:rgba(255,255,255,.6)">CSP / Líq. consolidado: <strong style="color:${totalCspLiq<=CSP_EFF_THRESHOLD?'#6EE7B7':totalCspLiq<50?'#FCD34D':'#FCA5A5'}">${totalCspLiq.toFixed(1)}%</strong></div>`:''}
       ${!hasData?`<div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.4)">Insira os dados mensais na aba CSP</div>`:''}
     </div>`;
 
   document.getElementById('ov-csp-cards').innerHTML = totalCard
     + sqCard('Alpha', alphaS, 'ov-sq-card-alpha')
-    + sqCard('Midas', midasS, 'ov-sq-card-midas');
+    + sqCard('Midas', midasS, 'ov-sq-card-midas')
+    + sqCard('ISaaS', isaasS, 'ov-sq-card-isaas');
 }
 
 // ══════════════════════════════════════════
