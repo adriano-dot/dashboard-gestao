@@ -777,7 +777,18 @@ function buildSquadMaps() {
   // From Cockpit header — check for squad column
   const ckHdr = STATE.cockpit[0] || [];
   STATE._ckSquadCol = ckHdr.findIndex(h => /^squad$/i.test(String(h||'').trim()));
+
+  // Auto-detecta estrutura do Painel 2026 e atualiza MONTHS + period pills
+  applyDynamicMonths(STATE.painel2026);
+
+  // Reconstrói índices de linhas após MONTHS ter sido atualizado
+  buildRowIdx();
 }
+
+// Helper robusto: normaliza status (trim + case-insensitive)
+function isAtivo(r)  { return /^ativo$/i.test(String(r[7]||'').trim()); }
+function isChurn(r)  { return /^churn$/i.test(String(r[7]||'').trim()); }
+function isAviso(r)  { return /^aviso/i.test(String(r[7]||'').trim()); }
 
 function getClientSquad(row) {
   if (STATE._ckSquadCol >= 0 && row[STATE._ckSquadCol]) return String(row[STATE._ckSquadCol]).trim();
@@ -1246,16 +1257,70 @@ const bCls=p=>p>=90?'g':p>=60?'y':'r';
 const trunc=(s,n=80)=>s&&String(s).length>n?String(s).slice(0,n)+'…':(s||'—');
 const fmtDate=v=>{if(!v)return'—';if(v instanceof Date)return v.toLocaleDateString('pt-BR');if(typeof v==='number'){const d=new Date((v-25569)*86400*1000);return d.toLocaleDateString('pt-BR');}return v;};
 
-// Estrutura real do Google Sheets "Painel 2026" (dados semanais Set–Dez 2025):
-// col2 = label | cada bloco: meta / W1_real / W1_fato / W2_real / W2_fato / ...
-// Set: meta=col3, W3_real=col8  |  Out: meta=col12, W4_real=col19
-// Nov: meta=col21, W4_real=col28 |  Dez: meta=col30, W4_real=col37
+// MONTHS é populado dinamicamente via buildDynamicMonths() ao conectar.
+// Fallback hardcoded para estrutura MIDAS (Set–Dez 2025).
 const MONTHS=[
   {l:'Set/25',m:3, r:8 },
   {l:'Out/25',m:12,r:19},
   {l:'Nov/25',m:21,r:28},
   {l:'Dez/25',m:30,r:37},
 ];
+
+// ── Auto-detecta colunas do Painel 2026 e atualiza MONTHS ─────────────────
+function buildDynamicMonths(painel) {
+  if (!painel || painel.length < 4) return null;
+  const MON_MAP = {
+    'janeiro':0,'jan':0,'fevereiro':1,'fev':1,'março':2,'marco':2,'mar':2,
+    'abril':3,'abr':3,'maio':4,'mai':4,'junho':5,'jun':5,
+    'julho':6,'jul':6,'agosto':7,'ago':7,'setembro':8,'set':8,
+    'outubro':9,'out':9,'novembro':10,'nov':10,'dezembro':11,'dez':11
+  };
+  const SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  for (let ri = 0; ri < Math.min(10, painel.length); ri++) {
+    const row = painel[ri];
+    const found = {}; // mi → ci
+    for (let ci = 0; ci < row.length; ci++) {
+      const cell = String(row[ci]||'').toLowerCase().trim();
+      if (!cell) continue;
+      for (const [key, mi] of Object.entries(MON_MAP)) {
+        if (cell === key && !(mi in found)) { found[mi] = ci; break; }
+      }
+    }
+    if (Object.keys(found).length < 3) continue;
+
+    // Encontrou linha de meses — busca Meta/Realizado nas linhas seguintes
+    const result = [];
+    for (const [miStr, startCi] of Object.entries(found).sort((a,b)=>a[0]-b[0])) {
+      let mCol = startCi, rCol = startCi + 1;
+      for (let offset = 1; offset <= 4; offset++) {
+        const sub = painel[ri + offset] || [];
+        let fm = -1, fr = -1;
+        for (let d = 0; d < 10; d++) {
+          const sh = String(sub[startCi + d]||'').toLowerCase();
+          if (sh.includes('meta') && fm < 0) fm = startCi + d;
+          if (sh.includes('realizado') || sh.startsWith('real')) fr = startCi + d; // último = semana mais recente
+        }
+        if (fm >= 0 && fr >= 0) { mCol = fm; rCol = fr; break; }
+      }
+      const mi = Number(miStr);
+      const yr = mi >= 8 ? '25' : '26';
+      result.push({l:`${SHORT[mi]}/${yr}`, m:mCol, r:rCol});
+    }
+    if (result.length >= 3) return result;
+  }
+  return null;
+}
+
+function applyDynamicMonths(painel) {
+  const detected = buildDynamicMonths(painel);
+  const target = detected || [
+    {l:'Set/25',m:3,r:8},{l:'Out/25',m:12,r:19},{l:'Nov/25',m:21,r:28},{l:'Dez/25',m:30,r:37}
+  ];
+  MONTHS.splice(0, MONTHS.length, ...target);
+  ACTIVE_PERIOD = -1; // reset para "Atual"
+  buildPeriodPills();
+}
 
 const ROWS={receita:-1,volClientes:-1,capOper:-1,nrr:-1,monTotal:-1,monRec:-1,monVar:-1,revChurnPct:-1,revChurnR:-1,logoChurn:-1,saudeC:-1,roi:-1,intimidade:-1,recRisco:-1,nps:-1,satLider:-1,saudeInv:-1,turnover:-1,variavel:-1,folha:-1,imposto:-1,ebitda:-1,margem:-1,sdr:-1,closer:-1};
 const IS_ROWS={receita:-1,variavel:-1,capOper:-1,folha:-1,imposto:-1,ebitda:-1,margem:-1,sdr:-1,closer:-1};
@@ -1328,7 +1393,7 @@ function renderAll() {
   });
   // ISaaS handled by renderISaaS()
   // Update squad count
-  const ck = filterBySquad(STATE.cockpit.slice(1).filter(r=>r[7]==='Ativo'));
+  const ck = filterBySquad(STATE.cockpit.slice(1).filter(isAtivo));
   document.getElementById('squad-count').textContent = ACTIVE_SQUAD==='Todos' ? '' : `${ck.length} clientes ativos no squad`;
   renderOverview(); renderFinanceiro(); renderClientes();
   renderCapacidade(); renderPeople(); renderAcoes(); renderISaaS();
@@ -1341,7 +1406,7 @@ function renderOverview() {
   const mi=activeMi(), ml=MONTHS[mi].l;
   const rec=getKPI('receita',mi), nrr=getKPI('nrr',mi), cap=getKPI('capOper',mi), vol=getKPI('volClientes',mi), risco=getKPI('recRisco',mi);
   const ck=filterBySquad(STATE.cockpit.slice(1));
-  const ativos=ck.filter(r=>r[7]==='Ativo'), churnC=ck.filter(r=>r[7]==='Churn'), aviso=ck.filter(r=>r[7]==='Aviso Prévio');
+  const ativos=ck.filter(isAtivo), churnC=ck.filter(isChurn), aviso=ck.filter(isAviso);
   const mrr=ativos.reduce((s,r)=>s+(typeof r[12]==='number'?r[12]:0),0);
 
   document.getElementById('kpi-ov').innerHTML=[
@@ -1503,7 +1568,7 @@ function renderFinanceiro() {
   const mi=activeMi();
   const rec=getKPI('receita',mi), rd=getMonthly('receita');
   const ytdR=rd.reais.reduce((s,v)=>s+v,0), ytdM=rd.metas.reduce((s,v)=>s+v,0);
-  const allAtivos=filterBySquad(STATE.cockpit.slice(1).filter(r=>r[7]==='Ativo'));
+  const allAtivos=filterBySquad(STATE.cockpit.slice(1).filter(isAtivo));
   const mrr=allAtivos.reduce((s,r)=>s+(typeof r[12]==='number'?r[12]:0),0);
   const otAll=STATE.oneTime.slice(2).filter(r=>r[1]&&!String(r[1]).includes('Preencha'));
   let ot=ACTIVE_SQUAD==='Todos'?otAll:otAll.filter(r=>String(r[2]||'').trim().toLowerCase()===ACTIVE_SQUAD.toLowerCase());
@@ -1592,9 +1657,9 @@ function renderClientes() {
 
   // KPI counts from HS data (use cockpit fallback for status if available)
   const ck = STATE.cockpit.slice(1).filter(r=>r[6]);
-  const ativos = ck.length ? ck.filter(r=>r[7]==='Ativo') : hsAll;
-  const churnCount = ck.filter(r=>r[7]==='Churn').length;
-  const avisoCount = ck.filter(r=>r[7]==='Aviso Prévio').length;
+  const ativos = ck.length ? ck.filter(isAtivo) : hsAll;
+  const churnCount = ck.filter(isChurn).length;
+  const avisoCount = ck.filter(isAviso).length;
   const mi=activeMi(), sc=getKPI('saudeC',mi), roi=getKPI('roi',mi);
   const npsV=ativos.map(r=>r[36]).filter(v=>typeof v==='number');
   const npsAvg=npsV.length?(npsV.reduce((s,v)=>s+v,0)/npsV.length).toFixed(1):'—';
@@ -1700,7 +1765,7 @@ function renderCapacidade() {
   }
 
   // Active clients by executor + tipo (filtered by squad)
-  const ckAtivos=filterBySquad(STATE.cockpit.slice(1).filter(r=>r[7]==='Ativo'));
+  const ckAtivos=filterBySquad(STATE.cockpit.slice(1).filter(isAtivo));
   const load={};
   ckAtivos.forEach(r=>{
     const acc=String(r[14]||r[13]||'').trim(); if(!acc)return;
