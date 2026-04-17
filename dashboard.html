@@ -963,11 +963,20 @@ async function connectSheets(silent=false) {
       if (!url) return;
       const id = extractId(url);
       if (!id) return;
-      // Tenta os nomes de aba mais comuns
-      for (const tabName of ['CSP','Página1','Pagina1','Sheet1','Plan1']) {
+      // Tenta os nomes de aba mais comuns + primeira aba sem nome (fallback)
+      const tabsToTry = ['CSP','Dashboard','Página1','Pagina1','Sheet1','Plan1','Planilha1','Plan','Alpha','Midas','ISaaS','ISAAS'];
+      let found = false;
+      for (const tabName of tabsToTry) {
         try {
           const rows = await fetchSheet(id, tabName, 5);
-          if (rows?.length) { STATE._cspRawPerSquad[sq] = rows; break; }
+          if (rows?.length) { STATE._cspRawPerSquad[sq] = rows; found = true; break; }
+        } catch {}
+      }
+      // Fallback: primeira aba da planilha (sem especificar nome)
+      if (!found) {
+        try {
+          const rows = await fetchSheet(id, '', 5);
+          if (rows?.length) STATE._cspRawPerSquad[sq] = rows;
         } catch {}
       }
     }));
@@ -1085,27 +1094,30 @@ const fmt=(v,t='cur')=>{
   return v;
 };
 
-// Aceita formato brasileiro: 44.361,29 | 44.361 | 44361.29 | 44361
+// Aceita: R$ 44.361,29 | 44.361,29 | 44.361 | 44361.29 | 44361
 function parseBR(v) {
   if (v === null || v === undefined || v === '') return 0;
-  const s = String(v).trim();
+  // Se já é número (Google Sheets retorna número quando célula tem formato moeda)
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  let s = String(v).trim();
   if (!s) return 0;
-  // Se tem vírgula → vírgula é decimal, pontos são milhar
+  // Remove prefixo de moeda: R$, $, € e espaços
+  s = s.replace(/^[R$€£\s]+/,'').replace(/\s/g,'').trim();
+  if (!s) return 0;
+  // Se tem vírgula → vírgula é decimal, pontos são milhar (padrão pt-BR)
   if (s.includes(',')) {
     const n = parseFloat(s.replace(/\./g,'').replace(',','.'));
     return isNaN(n) ? 0 : n;
   }
-  // Se tem ponto: verifica se é milhar (ex: 44.361) ou decimal (44.36)
-  // Regra: se houver exatamente 3 dígitos após o único ponto → milhar
+  // Se tem ponto: verifica se é separador de milhar (3 dígitos após) ou decimal
   const dotParts = s.split('.');
   if (dotParts.length === 2 && dotParts[1].length === 3) {
-    // Ex: 44.361 → 44361
     const n = parseFloat(s.replace('.',''));
     return isNaN(n) ? 0 : n;
   }
   // Caso padrão: número simples ou decimal com ponto
-  const n = parseFloat(s.replace(/\./g,''));
-  return isNaN(n) ? parseFloat(s) || 0 : n;
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
 }
 
 // Formata número para exibição no input (sem R$)
