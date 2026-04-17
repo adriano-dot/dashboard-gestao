@@ -782,7 +782,108 @@ function buildSquadMaps() {
 function getClientSquad(row) {
   if (STATE._ckSquadCol >= 0 && row[STATE._ckSquadCol]) return String(row[STATE._ckSquadCol]).trim();
   const account = String(row[14]||row[13]||'').trim();
-  return STATE._personSquad?.[account] || STATE._execSquad?.[account] || '';
+  return STATE._personSquad?.[account] || STATE._execSquad?.[account] || row._squad || '';
+}
+
+// ── Normaliza Cockpit Overview para layout padrão (MIDAS)
+// ALPHA não tem os 4 colunas de id no início, e tem colunas extras no meio.
+// Detecta pelo header e remapeia para o layout esperado pelo dashboard.
+function normalizeCockpitRows(rows) {
+  if (!rows || rows.length < 2) return rows;
+  const hdr = rows[0].map(v => String(v||'').toLowerCase().trim());
+  // Layout padrão: col 0 começa com "id_ekyte"
+  if (/^id.?ekyte/i.test(hdr[0]||'')) return rows;
+  // Layout ALPHA: col 0 = "squad", col 2 = "nome"
+  const nameIdx = hdr.findIndex(v => /^nome$|^name$/i.test(v));
+  if (nameIdx < 0) return rows; // formato desconhecido
+  const fi = re => hdr.findIndex(v => re.test(v));
+  const m = {
+    squad:    fi(/^squad$/),
+    dtStart:  fi(/^data.*in[íi]cio$|^data de inicio$/),
+    name:     nameIdx,
+    status:   fi(/^status$/),
+    dtChurn:  fi(/^data.*churn$/),
+    categ:    fi(/^categoria/),
+    contrato: fi(/^valor.*contrato$/),
+    comp:     fi(/^compromisso$/),
+    mensal:   fi(/^mensal$/),
+    coord:    fi(/^coordenador$/),
+    account:  fi(/^account$/),
+    gt:       fi(/^gt$/),
+    designer: fi(/^designer$/),
+    copy:     fi(/^copy$/),
+    result:   fi(/^resultados$/),
+    flagC:    fi(/^flag calculada$/),
+    flagU:    fi(/^flag ultima/),
+    resp:     fi(/^responsavel$/),
+    deadline: fi(/^deadline$/),
+    tier:     fi(/^tier$/),
+    mhs:      fi(/^m?hs$/),
+    nps:      fi(/^nps$/),
+  };
+  const g = (row, i) => (i >= 0 && i < row.length) ? row[i] : '';
+  const remap = row => {
+    const r = new Array(43).fill('');
+    r[4]=g(row,m.squad); r[5]=g(row,m.dtStart); r[6]=g(row,m.name);
+    r[7]=g(row,m.status); r[8]=g(row,m.dtChurn); r[9]=g(row,m.categ);
+    r[10]=g(row,m.contrato); r[11]=g(row,m.comp); r[12]=g(row,m.mensal);
+    r[13]=g(row,m.coord); r[14]=g(row,m.account); r[15]=g(row,m.gt);
+    r[16]=g(row,m.designer); r[17]=g(row,m.copy); r[18]=g(row,m.result);
+    r[19]=g(row,m.flagC); r[20]=g(row,m.flagU); r[21]=g(row,m.resp);
+    r[22]=g(row,m.deadline); r[23]=g(row,m.tier); r[35]=g(row,m.mhs); r[36]=g(row,m.nps);
+    if (row._squad !== undefined) r._squad = row._squad;
+    return r;
+  };
+  // Remapeia o header para o formato padrão (necessário para _ckSquadCol funcionar)
+  const hdrOut = new Array(43).fill('');
+  ['','','','','Squad','Data Início','name','Status','Data Churn','Categoria_Produto',
+   'Valor do Contrato','Compromisso','Mensal','Coordenador','Account','GT','Designer',
+   'Copy','Resultados','Flag calculada','Flag ultima alteracao','Responsavel','Deadline',
+   'tier'].forEach((v,i)=>hdrOut[i]=v);
+  hdrOut[35]='MHS'; hdrOut[36]='NPS';
+  return [hdrOut, ...rows.slice(1).map(remap)];
+}
+
+// ── Normaliza One Time para layout padrão
+// ALPHA tem: [0]Cliente [1]Contrato [2]Valor [3]Faturamento [4]FormaP [5](vazio)
+//            [6]DtInicio [7]DtFim [8]Entrega [9]Status [10]Obs [11]Squad
+// Dashboard espera: [0]Nome [1]Contrato [2]Squad [7]Valor [9]DtInicio [10]DtFim
+function normalizeOneTimeRows(rows) {
+  if (!rows || rows.length < 2) return rows;
+  const hdrIdx = rows.findIndex(r => r && r.some(v => v != null && v !== ''));
+  if (hdrIdx < 0) return rows;
+  const hdr = (rows[hdrIdx]||[]).map(v => String(v||'').toLowerCase().trim());
+  const fi = re => hdr.findIndex(v => re.test(v));
+  const idxCliente = fi(/^cliente$|^nome$/);
+  const idxContrato = fi(/^contrato$/);
+  const idxValor   = fi(/^valor$/);
+  const idxFat     = fi(/^faturamento$/);
+  const idxDtInit  = fi(/data.*in[íi]cio|data de inicio/);
+  const idxDtFim   = fi(/data.*finaliz|data.*fim/);
+  const idxStatus  = fi(/^status$/);
+  const idxSquad   = fi(/^squad$/);
+  // Sem squad ou squad já no lugar certo → sem normalização
+  if (idxSquad < 0 || idxSquad === 2) return rows;
+  const g = (row, i) => (i >= 0 && i < row.length) ? row[i] : '';
+  const remap = row => {
+    const r = new Array(12).fill('');
+    r[0] = g(row, idxCliente >= 0 ? idxCliente : 0);
+    r[1] = g(row, idxContrato >= 0 ? idxContrato : 1);
+    r[2] = g(row, idxSquad);
+    r[3] = g(row, idxStatus >= 0 ? idxStatus : -1);
+    r[4] = g(row, idxFat >= 0 ? idxFat : -1);
+    r[7] = g(row, idxValor >= 0 ? idxValor : -1);
+    r[9] = g(row, idxDtInit >= 0 ? idxDtInit : -1);
+    r[10]= g(row, idxDtFim >= 0 ? idxDtFim : -1);
+    if (row._squad !== undefined) r._squad = row._squad;
+    return r;
+  };
+  const emptyRow = () => { const r=new Array(12).fill(''); return r; };
+  return [
+    ...rows.slice(0, hdrIdx).map(emptyRow),
+    (() => { const h=new Array(12).fill(''); h[0]='Cliente';h[1]='Contrato';h[2]='Squad';h[3]='Status';h[7]='Valor';h[9]='Data Início';h[10]='Data Finalização'; return h; })(),
+    ...rows.slice(hdrIdx + 1).map(remap)
+  ];
 }
 
 function squadTag(sq) {
@@ -937,8 +1038,11 @@ async function connectSheets(silent=false) {
         fetchSheet(id,'Health Score',91),
         fetchSheet(id,'CSP',5),
       ]);
-      return { squad:cfg.squad, painel2026:p2026, cockpit:tag(ck,cfg.squad), oneTime:tag(ot,cfg.squad),
-        healthPeople:hp, pdsa, planoAcao:tag(pa,cfg.squad), capacidade:tag(cap,cfg.squad), healthScore:tag(hs,cfg.squad), csp };
+      return { squad:cfg.squad, painel2026:p2026,
+        cockpit:  tag(normalizeCockpitRows(ck), cfg.squad),
+        oneTime:  tag(normalizeOneTimeRows(ot), cfg.squad),
+        healthPeople:hp, pdsa, planoAcao:tag(pa,cfg.squad),
+        capacidade:tag(cap,cfg.squad), healthScore:tag(hs,cfg.squad), csp };
     }));
     const valid = sources.filter(Boolean);
     if (!valid.length) { setSt('err','Nenhum ID válido encontrado.'); return; }
@@ -1463,7 +1567,8 @@ function renderFinanceiro() {
 // ══════════════════════════════════════════
 // Returns latest non-zero Health Score {score, status} from the 4 periods
 function getLatestHS(r) {
-  const periods=[{s:71,st:72},{s:51,st:52},{s:30,st:31},{s:9,st:10}];
+  // MIDAS Apr=BT(71)/BU(72) · ALPHA Apr=BU(72)/BV(73) — checa 72 primeiro; se não for número cai para 71
+  const periods=[{s:72,st:73},{s:71,st:72},{s:51,st:52},{s:30,st:31},{s:9,st:10}];
   for(const p of periods){
     if(typeof r[p.s]==='number'&&r[p.s]>0) return{score:r[p.s],status:String(r[p.st]||'')};
   }
