@@ -913,7 +913,7 @@ async function connectSheets(silent=false) {
         fetchSheet(id,'Plano de Ação',14),
         fetchSheet(id,'Capacidade',5),
         fetchSheet(id,'Health Score',91),
-        fetchSheet(id,'CSP',4),
+        fetchSheet(id,'CSP',5),
       ]);
       return { squad:cfg.squad, painel2026:p2026, cockpit:tag(ck,cfg.squad), oneTime:tag(ot,cfg.squad),
         healthPeople:hp, pdsa, planoAcao:tag(pa,cfg.squad), capacidade:tag(cap,cfg.squad), healthScore:tag(hs,cfg.squad), csp };
@@ -1819,34 +1819,73 @@ const CSP_MONTH_NAMES_MAP = {
 };
 
 function cspParseSheet(rows) {
-  // Returns array[12] of {folha, recRec, recPon} or null if no data
+  // Supports two formats:
+  //
+  // FORMAT A — Summary (1 row per month):
+  //   Mês | Folha | Receita Recorrente | Serviços Pontuais
+  //   Janeiro | 25000 | 60000 | 10000
+  //
+  // FORMAT B — Detail (N rows per month, individual entries):
+  //   Mês | Tipo | Descrição | Valor
+  //   Janeiro | Folha | João Silva | 3500
+  //   Janeiro | Folha | Maria Costa | 4200
+  //   Janeiro | Receita Recorrente | Cliente A | 15000
+  //   Janeiro | Receita Pontual | Projeto X | 8000
+  //
+  // Tipo aceita: Folha / Folha do Time / Remuneração
+  //             Receita Recorrente / Recorrente / MRR
+  //             Receita Pontual / Pontual / One Time / Serviços Pontuais
+  //             (case-insensitive)
+
   if (!rows || !rows.length) return null;
 
-  // Skip header row if first cell looks like a label
   const firstCell = String(rows[0]?.[0]||'').toLowerCase().trim();
-  const isHeader = /^m[eê]s|^month|^período/i.test(firstCell) || firstCell === 'mês';
+  const isHeader = /^m[eê]s|^month|^per[ií]odo/i.test(firstCell);
   const dataRows = isHeader ? rows.slice(1) : rows;
-
   if (!dataRows.length) return null;
+
+  // Detect format: if col1 looks like a "tipo" keyword → FORMAT B
+  const col1Sample = String(dataRows[0]?.[1]||'').toLowerCase().trim();
+  const isDetail = /folha|remunera|recorrente|pontual|one.?time|mrr|servi/i.test(col1Sample);
 
   const result = Array(12).fill(null).map(() => ({folha:0, recRec:0, recPon:0, fromSheet:true}));
   let hasAny = false;
 
-  dataRows.forEach((r, idx) => {
-    // Detect month from column 0
-    const mCell = String(r[0]||'').toLowerCase().trim();
-    const mi = CSP_MONTH_NAMES_MAP[mCell] ?? (idx < 12 ? idx : -1);
-    if (mi < 0 || mi > 11) return;
+  if (isDetail) {
+    // FORMAT B: group by month, sum by tipo
+    const tipoFolha = /folha|remunera[çc]/i;
+    const tipoRec   = /recorrente|mrr/i;
+    const tipoPon   = /pontual|one.?time|servi[çc]/i;
 
-    const folha  = parseBR(r[1]);
-    const recRec = parseBR(r[2]);
-    const recPon = parseBR(r[3]);
+    dataRows.forEach((r) => {
+      const mCell = String(r[0]||'').toLowerCase().trim();
+      const mi = CSP_MONTH_NAMES_MAP[mCell];
+      if (mi === undefined || mi < 0 || mi > 11) return;
+      const tipo  = String(r[1]||'').trim();
+      const valor = parseBR(r[3] ?? r[2]); // col3 = Valor, fallback col2
+      if (!valor) return;
 
-    if (folha || recRec || recPon) {
-      result[mi] = { folha, recRec, recPon, fromSheet: true };
-      hasAny = true;
-    }
-  });
+      if (tipoFolha.test(tipo)) { result[mi].folha  += valor; hasAny = true; }
+      else if (tipoRec.test(tipo)) { result[mi].recRec += valor; hasAny = true; }
+      else if (tipoPon.test(tipo)) { result[mi].recPon += valor; hasAny = true; }
+    });
+  } else {
+    // FORMAT A: one row per month
+    dataRows.forEach((r, idx) => {
+      const mCell = String(r[0]||'').toLowerCase().trim();
+      const mi = CSP_MONTH_NAMES_MAP[mCell] ?? (idx < 12 ? idx : -1);
+      if (mi < 0 || mi > 11) return;
+      const folha  = parseBR(r[1]);
+      const recRec = parseBR(r[2]);
+      const recPon = parseBR(r[3]);
+      if (folha || recRec || recPon) {
+        result[mi].folha  = folha;
+        result[mi].recRec = recRec;
+        result[mi].recPon = recPon;
+        hasAny = true;
+      }
+    });
+  }
 
   return hasAny ? result : null;
 }
@@ -2224,21 +2263,29 @@ function cspRemovePessoa(idx) { cspAddPessoa_remove(idx); }
 
 function cspShowSheetHelp(e) {
   e.preventDefault();
-  alert(`Crie uma aba chamada "CSP" na planilha do squad com este formato:
+  alert(`Crie uma aba chamada "CSP" na planilha do squad.
 
-Coluna A     | Coluna B      | Coluna C             | Coluna D
-Mês          | Folha         | Receita Recorrente   | Serviços Pontuais
-Janeiro      | 25000         | 60000                | 10000
-Fevereiro    | 27000         | 65000                | 5000
-Março        | ...           | ...                  | ...
-...          | ...           | ...                  | ...
-Dezembro     | ...           | ...                  | ...
+FORMATO RECOMENDADO — entradas individuais (o dashboard soma tudo):
 
-• A primeira linha pode ser o cabeçalho ou já o primeiro mês
-• Os valores podem ter ponto e vírgula (ex: 44.361,29 ou 44361.29)
+Coluna A  | Coluna B             | Coluna C      | Coluna D
+Mês       | Tipo                 | Descrição     | Valor
+Janeiro   | Folha                | João Silva    | 3.500
+Janeiro   | Folha                | Maria Costa   | 4.200
+Janeiro   | Receita Recorrente   | Cliente A     | 15.000
+Janeiro   | Receita Pontual      | Projeto X     | 8.000
+Fevereiro | Folha                | João Silva    | 3.500
+...
+
+TIPOS ACEITOS:
+• Folha (ou Remuneração) → soma na coluna Custo da Folha
+• Receita Recorrente (ou MRR) → soma na receita recorrente
+• Receita Pontual (ou Serviços Pontuais / One Time) → soma nos serviços pontuais
+
+• Valores: 3500 ou 3.500 ou 3.500,00 — todos funcionam
+• A primeira linha pode ser cabeçalho ou já os dados
 • Compartilhe a planilha como "Qualquer pessoa com o link pode ver"
 
-Após criar a aba, clique em Conectar no dashboard para carregar os dados.`);
+Após criar a aba, clique em Conectar no dashboard.`);
 }
 </script>
 </body>
