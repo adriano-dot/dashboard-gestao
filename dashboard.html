@@ -787,7 +787,8 @@ function getClientSquad(row) {
 
 function squadTag(sq) {
   if (!sq) return '<span class="sq-tag sq-none">—</span>';
-  const cl = sq.toLowerCase() === 'midas' ? 'sq-midas' : sq.toLowerCase() === 'alpha' ? 'sq-alpha' : sq.toLowerCase() === 'isaas' || sq.toLowerCase() === 'isas' ? 'sq-isaas' : 'sq-none';
+  const s = String(sq).toLowerCase();
+  const cl = s === 'midas' ? 'sq-midas' : s === 'alpha' ? 'sq-alpha' : s === 'isaas' || s === 'isas' ? 'sq-isaas' : 'sq-none';
   return `<span class="sq-tag ${cl}">${sq}</span>`;
 }
 
@@ -795,7 +796,7 @@ function filterBySquad(rows) {
   if (ACTIVE_SQUAD === 'Todos') return rows;
   return rows.filter(r => {
     const sq = getClientSquad(r);
-    return sq.toLowerCase() === ACTIVE_SQUAD.toLowerCase();
+    return String(sq||'').toLowerCase() === ACTIVE_SQUAD.toLowerCase();
   });
 }
 
@@ -1598,7 +1599,7 @@ function renderCapacidade() {
   });
 
   const allExecs=[...new Set([...Object.keys(load),...Object.keys(cap)])]
-    .filter(e=>ACTIVE_SQUAD==='Todos'||(cap[e]?.squad||STATE._personSquad?.[e]||'').toLowerCase()===ACTIVE_SQUAD.toLowerCase())
+    .filter(e=>ACTIVE_SQUAD==='Todos'||String(cap[e]?.squad||STATE._personSquad?.[e]||'').toLowerCase()===ACTIVE_SQUAD.toLowerCase())
     .sort();
 
   // KPIs
