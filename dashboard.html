@@ -341,6 +341,11 @@
           <input class="conn-in sheet-url" id="url-midas" placeholder="Link da planilha Midas…"/>
         </div>
       </div>
+      <div class="cfg-lbl" style="margin-top:10px">Planilha CSP <span style="color:rgba(255,255,255,.3);font-weight:400;text-transform:none;letter-spacing:0">(separada — Alpha + Midas)</span></div>
+      <div class="sheet-entry">
+        <span style="font-size:10px;font-weight:700;color:#FCD34D;min-width:44px;background:rgba(251,191,36,.15);padding:3px 7px;border-radius:5px;text-align:center">CSP</span>
+        <input class="conn-in" id="url-csp" placeholder="Link da planilha CSP…"/>
+      </div>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -887,12 +892,17 @@ function renderSheetsList(cfgs) {
     const el = document.getElementById('url-'+sq);
     if (el) el.value = cfg.url || '';
   });
+  const cspEl = document.getElementById('url-csp');
+  if (cspEl) cspEl.value = localStorage.getItem('gsCspUrl') || '';
 }
 function readSheetEntries() {
   return ['ISaaS','Alpha','Midas'].map(sq => ({
     squad: sq,
     url: (document.getElementById('url-'+sq.toLowerCase())?.value||'').trim(),
   })).filter(c => c.url);
+}
+function readCspUrl() {
+  return (document.getElementById('url-csp')?.value||'').trim();
 }
 
 async function connectSheets(silent=false) {
@@ -936,6 +946,26 @@ async function connectSheets(silent=false) {
     setSt('ok','Conectado · '+new Date().toLocaleTimeString('pt-BR')+
       (valid.length>1?' ('+valid.length+' planilhas)':''));
     buildSquadMaps();
+    // Fetch planilha CSP separada (se configurada)
+    const cspUrl = localStorage.getItem('gsCspUrl');
+    if (cspUrl) {
+      const cspId = extractId(cspUrl);
+      if (cspId) {
+        try {
+          STATE._cspRawRows = await fetchSheet(cspId, 'CSP', 5);
+        } catch(e) {
+          STATE._cspRawRows = [];
+          console.warn('Aba CSP separada não encontrada:', e.message);
+        }
+        // Tenta aba "Página1" como fallback
+        if (!STATE._cspRawRows?.length) {
+          try { STATE._cspRawRows = await fetchSheet(cspId, 'Página1', 5); } catch {}
+        }
+        if (!STATE._cspRawRows?.length) {
+          try { STATE._cspRawRows = await fetchSheet(cspId, 'Sheet1', 5); } catch {}
+        }
+      }
+    }
     buildCspData();
     renderAll();
   } catch(e) { setSt('err','Erro: '+e.message); console.error(e); }
@@ -981,6 +1011,9 @@ function setRefresh(btn) {
 function saveSettings() {
   const cfgs = readSheetEntries();
   if (cfgs.length) { saveSheetConfigs(cfgs); document.getElementById('gsUrl').value = cfgs[0].url; }
+  const cspUrl = readCspUrl();
+  if (cspUrl) localStorage.setItem('gsCspUrl', cspUrl);
+  else localStorage.removeItem('gsCspUrl');
   const minsBtn = document.querySelector('.ri-btn.active');
   const mins = minsBtn ? parseInt(minsBtn.dataset.mins) : 0;
   localStorage.setItem('gsRefreshMins', mins);
@@ -1893,12 +1926,68 @@ function cspParseSheet(rows) {
 // STATE._cspSheet = { Alpha: Array(12)|null, Midas: Array(12)|null }
 function buildCspData() {
   STATE._cspSheet = {};
+
+  // 1ª prioridade: planilha CSP separada (tem coluna Squad)
+  if (STATE._cspRawRows?.length) {
+    const parsed = cspParseSheetWithSquad(STATE._cspRawRows);
+    if (parsed.Alpha) STATE._cspSheet['Alpha'] = parsed.Alpha;
+    if (parsed.Midas) STATE._cspSheet['Midas'] = parsed.Midas;
+    return; // planilha separada encontrada — não precisa das abas por squad
+  }
+
+  // 2ª prioridade: aba "CSP" dentro de cada planilha de squad
   (STATE._sources || []).forEach(src => {
     if ((src.squad === 'Alpha' || src.squad === 'Midas') && src.csp?.length) {
       const parsed = cspParseSheet(src.csp);
       if (parsed) STATE._cspSheet[src.squad] = parsed;
     }
   });
+}
+
+// Parseia planilha CSP separada que tem coluna Squad
+// Formato: Mês | Squad | Tipo | Descrição | Valor
+function cspParseSheetWithSquad(rows) {
+  if (!rows?.length) return {};
+
+  const firstCell = String(rows[0]?.[0]||'').toLowerCase().trim();
+  const isHeader = /^m[eê]s|^month|^per[ií]odo/i.test(firstCell);
+  const dataRows = isHeader ? rows.slice(1) : rows;
+
+  const result = {
+    Alpha: Array(12).fill(null).map(() => ({folha:0, recRec:0, recPon:0, fromSheet:true})),
+    Midas: Array(12).fill(null).map(() => ({folha:0, recRec:0, recPon:0, fromSheet:true})),
+  };
+  let hasAlpha = false, hasMidas = false;
+
+  const tipoFolha = /folha|remunera[çc]/i;
+  const tipoRec   = /recorrente|mrr/i;
+  const tipoPon   = /pontual|one.?time|servi[çc]/i;
+
+  dataRows.forEach(r => {
+    const mCell  = String(r[0]||'').toLowerCase().trim();
+    const mi = CSP_MONTH_NAMES_MAP[mCell];
+    if (mi === undefined || mi < 0 || mi > 11) return;
+
+    const sqCell = String(r[1]||'').trim();
+    const sq = /alpha/i.test(sqCell) ? 'Alpha' : /midas/i.test(sqCell) ? 'Midas' : null;
+    if (!sq) return;
+
+    const tipo  = String(r[2]||'').trim();
+    const valor = parseBR(r[4] ?? r[3]); // col4 = Valor (com col3 = Descrição), fallback col3
+    if (!valor) return;
+
+    if      (tipoFolha.test(tipo)) { result[sq][mi].folha  += valor; }
+    else if (tipoRec.test(tipo))   { result[sq][mi].recRec += valor; }
+    else if (tipoPon.test(tipo))   { result[sq][mi].recPon += valor; }
+
+    if (sq === 'Alpha') hasAlpha = true;
+    else hasMidas = true;
+  });
+
+  return {
+    Alpha: hasAlpha ? result.Alpha : null,
+    Midas: hasMidas ? result.Midas : null,
+  };
 }
 
 const CSP_HASH = 'c38cf44c5c2e4c0fe5e2b4b982e3af73';
@@ -2033,11 +2122,11 @@ function renderCspMonthly(sq, isColor, panel) {
   ${hasSheet
     ? `<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:8px">
         <span style="font-size:16px">📊</span>
-        <span><strong>Dados carregados da planilha Google Sheets — aba "CSP".</strong> Edite diretamente na planilha para atualizar para todos.</span>
+        <span><strong>Dados carregados da planilha CSP.</strong> Edite diretamente na planilha para atualizar para todos.</span>
        </div>`
     : `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px">
         <span style="font-size:16px">✏️</span>
-        <span><strong>Preenchimento manual (local).</strong> Crie uma aba "CSP" na planilha do ${sq} para os dados ficarem disponíveis para todos. <a href="#" style="color:#D97706;font-weight:700" onclick="cspShowSheetHelp(event)">Ver formato →</a></span>
+        <span><strong>Sem planilha CSP conectada.</strong> Cole o link da planilha CSP nas configurações (⚙) para os dados ficarem disponíveis para todos. <a href="#" style="color:#D97706;font-weight:700" onclick="cspShowSheetHelp(event)">Ver formato →</a></span>
        </div>`}
 
   <!-- Summary cards (top) -->
@@ -2263,29 +2352,31 @@ function cspRemovePessoa(idx) { cspAddPessoa_remove(idx); }
 
 function cspShowSheetHelp(e) {
   e.preventDefault();
-  alert(`Crie uma aba chamada "CSP" na planilha do squad.
+  alert(`PLANILHA CSP SEPARADA
 
-FORMATO RECOMENDADO — entradas individuais (o dashboard soma tudo):
+Crie uma planilha no Google Sheets com o seguinte formato:
 
-Coluna A  | Coluna B             | Coluna C      | Coluna D
-Mês       | Tipo                 | Descrição     | Valor
-Janeiro   | Folha                | João Silva    | 3.500
-Janeiro   | Folha                | Maria Costa   | 4.200
-Janeiro   | Receita Recorrente   | Cliente A     | 15.000
-Janeiro   | Receita Pontual      | Projeto X     | 8.000
-Fevereiro | Folha                | João Silva    | 3.500
+Coluna A  | Coluna B | Coluna C             | Coluna D      | Coluna E
+Mês       | Squad    | Tipo                 | Descrição     | Valor
+Janeiro   | Alpha    | Folha                | João Silva    | 3.500
+Janeiro   | Alpha    | Folha                | Maria Costa   | 4.200
+Janeiro   | Alpha    | Receita Recorrente   | Cliente A     | 25.000
+Janeiro   | Alpha    | Receita Pontual      | Projeto X     | 8.000
+Janeiro   | Midas    | Folha                | Pedro Lima    | 4.000
+Janeiro   | Midas    | Receita Recorrente   | Cliente B     | 18.000
+Fevereiro | Alpha    | Folha                | João Silva    | 3.500
 ...
 
-TIPOS ACEITOS:
-• Folha (ou Remuneração) → soma na coluna Custo da Folha
-• Receita Recorrente (ou MRR) → soma na receita recorrente
-• Receita Pontual (ou Serviços Pontuais / One Time) → soma nos serviços pontuais
+TIPOS ACEITOS na Coluna C:
+• Folha (ou Remuneração)
+• Receita Recorrente (ou MRR)
+• Receita Pontual (ou Serviços Pontuais / One Time)
 
-• Valores: 3500 ou 3.500 ou 3.500,00 — todos funcionam
-• A primeira linha pode ser cabeçalho ou já os dados
-• Compartilhe a planilha como "Qualquer pessoa com o link pode ver"
-
-Após criar a aba, clique em Conectar no dashboard.`);
+COMO CONECTAR:
+1. Compartilhe a planilha como "Qualquer pessoa com o link pode ver"
+2. Abra as Configurações (⚙) no dashboard
+3. Cole o link no campo "Planilha CSP"
+4. Clique em Salvar & Conectar`);
 }
 </script>
 </body>
