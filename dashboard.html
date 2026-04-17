@@ -341,10 +341,18 @@
           <input class="conn-in sheet-url" id="url-midas" placeholder="Link da planilha Midas…"/>
         </div>
       </div>
-      <div class="cfg-lbl" style="margin-top:10px">Planilha CSP <span style="color:rgba(255,255,255,.3);font-weight:400;text-transform:none;letter-spacing:0">(separada — Alpha + Midas)</span></div>
+      <div class="cfg-lbl" style="margin-top:10px">Planilhas CSP <span style="color:rgba(255,255,255,.3);font-weight:400;text-transform:none;letter-spacing:0">(separadas por squad)</span></div>
       <div class="sheet-entry">
-        <span style="font-size:10px;font-weight:700;color:#FCD34D;min-width:44px;background:rgba(251,191,36,.15);padding:3px 7px;border-radius:5px;text-align:center">CSP</span>
-        <input class="conn-in" id="url-csp" placeholder="Link da planilha CSP…"/>
+        <span style="font-size:10px;font-weight:700;color:#A78BFA;min-width:44px;background:rgba(124,58,237,.2);padding:3px 7px;border-radius:5px;text-align:center">Alpha</span>
+        <input class="conn-in" id="url-csp-alpha" placeholder="Link da planilha CSP Alpha…"/>
+      </div>
+      <div class="sheet-entry" style="margin-top:6px">
+        <span style="font-size:10px;font-weight:700;color:#FF9090;min-width:44px;background:rgba(209,0,0,.2);padding:3px 7px;border-radius:5px;text-align:center">Midas</span>
+        <input class="conn-in" id="url-csp-midas" placeholder="Link da planilha CSP Midas…"/>
+      </div>
+      <div class="sheet-entry" style="margin-top:6px">
+        <span style="font-size:10px;font-weight:700;color:#67E8F9;min-width:44px;background:rgba(8,145,178,.2);padding:3px 7px;border-radius:5px;text-align:center">ISaaS</span>
+        <input class="conn-in" id="url-csp-isaas" placeholder="Link da planilha CSP ISaaS…"/>
       </div>
     </div>
 
@@ -892,8 +900,10 @@ function renderSheetsList(cfgs) {
     const el = document.getElementById('url-'+sq);
     if (el) el.value = cfg.url || '';
   });
-  const cspEl = document.getElementById('url-csp');
-  if (cspEl) cspEl.value = localStorage.getItem('gsCspUrl') || '';
+  ['alpha','midas','isaas'].forEach(sq => {
+    const el = document.getElementById('url-csp-'+sq);
+    if (el) el.value = localStorage.getItem('gsCspUrl-'+sq) || '';
+  });
 }
 function readSheetEntries() {
   return ['ISaaS','Alpha','Midas'].map(sq => ({
@@ -946,26 +956,21 @@ async function connectSheets(silent=false) {
     setSt('ok','Conectado · '+new Date().toLocaleTimeString('pt-BR')+
       (valid.length>1?' ('+valid.length+' planilhas)':''));
     buildSquadMaps();
-    // Fetch planilha CSP separada (se configurada)
-    const cspUrl = localStorage.getItem('gsCspUrl');
-    if (cspUrl) {
-      const cspId = extractId(cspUrl);
-      if (cspId) {
+    // Fetch planilhas CSP separadas por squad
+    STATE._cspRawPerSquad = {};
+    await Promise.all(['Alpha','Midas','ISaaS'].map(async sq => {
+      const url = localStorage.getItem('gsCspUrl-'+sq.toLowerCase());
+      if (!url) return;
+      const id = extractId(url);
+      if (!id) return;
+      // Tenta os nomes de aba mais comuns
+      for (const tabName of ['CSP','Página1','Pagina1','Sheet1','Plan1']) {
         try {
-          STATE._cspRawRows = await fetchSheet(cspId, 'CSP', 5);
-        } catch(e) {
-          STATE._cspRawRows = [];
-          console.warn('Aba CSP separada não encontrada:', e.message);
-        }
-        // Tenta aba "Página1" como fallback
-        if (!STATE._cspRawRows?.length) {
-          try { STATE._cspRawRows = await fetchSheet(cspId, 'Página1', 5); } catch {}
-        }
-        if (!STATE._cspRawRows?.length) {
-          try { STATE._cspRawRows = await fetchSheet(cspId, 'Sheet1', 5); } catch {}
-        }
+          const rows = await fetchSheet(id, tabName, 5);
+          if (rows?.length) { STATE._cspRawPerSquad[sq] = rows; break; }
+        } catch {}
       }
-    }
+    }));
     buildCspData();
     renderAll();
   } catch(e) { setSt('err','Erro: '+e.message); console.error(e); }
@@ -1011,9 +1016,11 @@ function setRefresh(btn) {
 function saveSettings() {
   const cfgs = readSheetEntries();
   if (cfgs.length) { saveSheetConfigs(cfgs); document.getElementById('gsUrl').value = cfgs[0].url; }
-  const cspUrl = readCspUrl();
-  if (cspUrl) localStorage.setItem('gsCspUrl', cspUrl);
-  else localStorage.removeItem('gsCspUrl');
+  ['alpha','midas','isaas'].forEach(sq => {
+    const url = (document.getElementById('url-csp-'+sq)?.value||'').trim();
+    if (url) localStorage.setItem('gsCspUrl-'+sq, url);
+    else localStorage.removeItem('gsCspUrl-'+sq);
+  });
   const minsBtn = document.querySelector('.ri-btn.active');
   const mins = minsBtn ? parseInt(minsBtn.dataset.mins) : 0;
   localStorage.setItem('gsRefreshMins', mins);
@@ -1923,29 +1930,29 @@ function cspParseSheet(rows) {
   return hasAny ? result : null;
 }
 
-// STATE._cspSheet = { Alpha: Array(12)|null, Midas: Array(12)|null }
+// STATE._cspSheet = { Alpha: Array(12)|null, Midas: Array(12)|null, ISaaS: Array(12)|null }
 function buildCspData() {
   STATE._cspSheet = {};
 
-  // 1ª prioridade: planilha CSP separada (tem coluna Squad)
-  if (STATE._cspRawRows?.length) {
-    const parsed = cspParseSheetWithSquad(STATE._cspRawRows);
-    if (parsed.Alpha) STATE._cspSheet['Alpha'] = parsed.Alpha;
-    if (parsed.Midas) STATE._cspSheet['Midas'] = parsed.Midas;
-    return; // planilha separada encontrada — não precisa das abas por squad
-  }
+  // 1ª prioridade: planilhas CSP separadas por squad (sem coluna Squad)
+  const perSquad = STATE._cspRawPerSquad || {};
+  ['Alpha','Midas','ISaaS'].forEach(sq => {
+    if (perSquad[sq]?.length) {
+      const parsed = cspParseSheet(perSquad[sq]);
+      if (parsed) STATE._cspSheet[sq] = parsed;
+    }
+  });
 
-  // 2ª prioridade: aba "CSP" dentro de cada planilha de squad
+  // 2ª prioridade (fallback): aba "CSP" dentro da planilha do squad
   (STATE._sources || []).forEach(src => {
-    if ((src.squad === 'Alpha' || src.squad === 'Midas') && src.csp?.length) {
+    if (!STATE._cspSheet[src.squad] && src.csp?.length) {
       const parsed = cspParseSheet(src.csp);
       if (parsed) STATE._cspSheet[src.squad] = parsed;
     }
   });
 }
 
-// Parseia planilha CSP separada que tem coluna Squad
-// Formato: Mês | Squad | Tipo | Descrição | Valor
+// DEPRECATED — mantido por compatibilidade, não é mais usado
 function cspParseSheetWithSquad(rows) {
   if (!rows?.length) return {};
 
@@ -2243,9 +2250,12 @@ function renderCspMonthly(sq, isColor, panel) {
   </div>`;
 }
 
-// ── ISaaS: team management (preserved) ─────────────────────────
+// ── ISaaS: planilha CSP + gestão de equipe ──────────────────────
 function renderCspISaaS(isColor, panel) {
   const sq = 'ISaaS';
+  const hasSheet = !!STATE._cspSheet?.[sq];
+  const sheetData = STATE._cspSheet?.[sq];
+  const curM = new Date().getMonth();
   const data = cspGetSquad(sq);
   const funcs = CSP_SQUADS[sq] || [];
   const liq = data.bruto * (1 - (data.royalties || 0) / 100);
@@ -2255,8 +2265,32 @@ function renderCspISaaS(isColor, panel) {
   const cspPct   = liq > 0 ? (folhaTot / liq * 100) : 0;
   const cspCls   = cspPct < 30 ? 'csp-mcard-ok' : cspPct < 50 ? 'csp-mcard-warn' : 'csp-mcard-err';
 
+  // Se tem dados da planilha CSP, mostra resumo mensal do ISaaS também
+  const isaasSheetBlock = hasSheet ? (() => {
+    const m = sheetData[curM] || {folha:0,recRec:0,recPon:0};
+    const total = (m.recRec||0) + (m.recPon||0);
+    const cspPctSheet = total > 0 ? (m.folha / total * 100) : null;
+    const cspCls2 = cspPctSheet === null ? 'csp-mcard-blue' : cspPctSheet < 30 ? 'csp-mcard-ok' : cspPctSheet < 50 ? 'csp-mcard-warn' : 'csp-mcard-err';
+    return `
+    <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">📊</span>
+      <span><strong>Dados CSP carregados da planilha.</strong> Mês atual: ${CSP_MN[curM]}</span>
+    </div>
+    <div class="csp-metrics" style="margin-bottom:18px">
+      <div class="csp-mcard csp-mcard-blue"><div class="csp-mlbl">Folha · ${CSP_MNS[curM]}</div><div class="csp-mval">${fmt(m.folha)}</div></div>
+      <div class="csp-mcard csp-mcard-blue"><div class="csp-mlbl">Rec. Recorrente · ${CSP_MNS[curM]}</div><div class="csp-mval">${fmt(m.recRec)}</div></div>
+      <div class="csp-mcard csp-mcard-blue"><div class="csp-mlbl">Serv. Pontuais · ${CSP_MNS[curM]}</div><div class="csp-mval">${fmt(m.recPon)}</div></div>
+      <div class="csp-mcard ${cspCls2}"><div class="csp-mlbl">CSP / Total · ${CSP_MNS[curM]}</div><div class="csp-mval">${cspPctSheet !== null ? cspPctSheet.toFixed(1)+'%' : '—'}</div><div class="csp-msub">${cspPctSheet === null ? 'Sem receita' : cspPctSheet < 30 ? '✓ Eficiente' : cspPctSheet < 50 ? '⚠ Atenção' : '⛔ Ineficiente'}</div></div>
+    </div>`;
+  })() : `
+    <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400E;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">✏️</span>
+      <span><strong>Sem planilha CSP conectada para ISaaS.</strong> Cole o link nas configurações (⚙). <a href="#" style="color:#D97706;font-weight:700" onclick="cspShowSheetHelp(event)">Ver formato →</a></span>
+    </div>`;
+
   panel.innerHTML = `
   <div style="border-top:3px solid ${isColor};margin-bottom:14px"></div>
+  ${isaasSheetBlock}
   <div class="csp-fin">
     <div class="csp-fin-group">
       <div class="csp-fin-lbl">Faturamento Bruto</div>
@@ -2352,31 +2386,28 @@ function cspRemovePessoa(idx) { cspAddPessoa_remove(idx); }
 
 function cspShowSheetHelp(e) {
   e.preventDefault();
-  alert(`PLANILHA CSP SEPARADA
+  alert(`PLANILHA CSP — FORMATO (uma planilha por squad)
 
-Crie uma planilha no Google Sheets com o seguinte formato:
-
-Coluna A  | Coluna B | Coluna C             | Coluna D      | Coluna E
-Mês       | Squad    | Tipo                 | Descrição     | Valor
-Janeiro   | Alpha    | Folha                | João Silva    | 3.500
-Janeiro   | Alpha    | Folha                | Maria Costa   | 4.200
-Janeiro   | Alpha    | Receita Recorrente   | Cliente A     | 25.000
-Janeiro   | Alpha    | Receita Pontual      | Projeto X     | 8.000
-Janeiro   | Midas    | Folha                | Pedro Lima    | 4.000
-Janeiro   | Midas    | Receita Recorrente   | Cliente B     | 18.000
-Fevereiro | Alpha    | Folha                | João Silva    | 3.500
+Coluna A  | Coluna B             | Coluna C      | Coluna D
+Mês       | Tipo                 | Descrição     | Valor
+Janeiro   | Folha                | João Silva    | 3.500
+Janeiro   | Folha                | Maria Costa   | 4.200
+Janeiro   | Receita Recorrente   | Cliente A     | 25.000
+Janeiro   | Receita Pontual      | Projeto X     | 8.000
+Fevereiro | Folha                | João Silva    | 3.500
 ...
 
-TIPOS ACEITOS na Coluna C:
-• Folha (ou Remuneração)
-• Receita Recorrente (ou MRR)
-• Receita Pontual (ou Serviços Pontuais / One Time)
+TIPOS ACEITOS (Coluna B):
+• Folha  (ou Remuneração)
+• Receita Recorrente  (ou MRR)
+• Receita Pontual  (ou Serviços Pontuais / One Time)
 
 COMO CONECTAR:
-1. Compartilhe a planilha como "Qualquer pessoa com o link pode ver"
-2. Abra as Configurações (⚙) no dashboard
-3. Cole o link no campo "Planilha CSP"
-4. Clique em Salvar & Conectar`);
+1. Crie uma planilha separada para cada squad (Alpha, Midas, ISaaS)
+2. Compartilhe cada uma como "Qualquer pessoa com o link pode ver"
+3. Abra Configurações (⚙) no dashboard
+4. Cole o link de cada squad no campo correspondente (CSP Alpha / CSP Midas / CSP ISaaS)
+5. Clique em Salvar & Conectar`);
 }
 </script>
 </body>
