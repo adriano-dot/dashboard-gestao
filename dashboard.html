@@ -1043,6 +1043,41 @@ const fmt=(v,t='cur')=>{
   return v;
 };
 
+// Aceita formato brasileiro: 44.361,29 | 44.361 | 44361.29 | 44361
+function parseBR(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const s = String(v).trim();
+  if (!s) return 0;
+  // Se tem vírgula → vírgula é decimal, pontos são milhar
+  if (s.includes(',')) {
+    const n = parseFloat(s.replace(/\./g,'').replace(',','.'));
+    return isNaN(n) ? 0 : n;
+  }
+  // Se tem ponto: verifica se é milhar (ex: 44.361) ou decimal (44.36)
+  // Regra: se houver exatamente 3 dígitos após o único ponto → milhar
+  const dotParts = s.split('.');
+  if (dotParts.length === 2 && dotParts[1].length === 3) {
+    // Ex: 44.361 → 44361
+    const n = parseFloat(s.replace('.',''));
+    return isNaN(n) ? 0 : n;
+  }
+  // Caso padrão: número simples ou decimal com ponto
+  const n = parseFloat(s.replace(/\./g,''));
+  return isNaN(n) ? parseFloat(s) || 0 : n;
+}
+
+// Formata número para exibição no input (sem R$)
+function fmtBR(v) {
+  if (!v || isNaN(v)) return '';
+  return Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+// Formata ao sair do campo
+function cspBlurFmt(el) {
+  const v = parseBR(el.value);
+  el.value = v > 0 ? fmtBR(v) : '';
+}
+
 const pct=(r,m)=>m&&m!==0?Math.min(200,Math.round(r/m*100)):0;
 const pClr=p=>p>=90?'#059669':p>=60?'#D97706':'#DC2626';
 const bCls=p=>p>=90?'g':p>=60?'y':'r';
@@ -1934,17 +1969,20 @@ function renderCspMonthly(sq, isColor, panel) {
           ${rows.map(r=>`
           <tr class="${r.i===curM?'csp-cur-m':''}">
             <td><strong style="color:${r.i===curM?isColor:'inherit'}">${CSP_MNS[r.i]}${r.i===curM?' ◀':''}</strong></td>
-            <td><input class="csp-month-in" type="number" min="0" placeholder="0"
-                  value="${r.folha||''}"
-                  oninput="cspSaveMonth('${sq}',${r.i},'folha',+this.value)"
+            <td><input class="csp-month-in" type="text" inputmode="decimal" placeholder="0,00"
+                  value="${r.folha>0?fmtBR(r.folha):''}"
+                  oninput="cspSaveMonth('${sq}',${r.i},'folha',parseBR(this.value))"
+                  onblur="cspBlurFmt(this);cspSaveMonth('${sq}',${r.i},'folha',parseBR(this.value))"
                   style="border-color:${isColor}30"/></td>
-            <td><input class="csp-month-in" type="number" min="0" placeholder="0"
-                  value="${r.recRec||''}"
-                  oninput="cspSaveMonth('${sq}',${r.i},'recRec',+this.value)"
+            <td><input class="csp-month-in" type="text" inputmode="decimal" placeholder="0,00"
+                  value="${r.recRec>0?fmtBR(r.recRec):''}"
+                  oninput="cspSaveMonth('${sq}',${r.i},'recRec',parseBR(this.value))"
+                  onblur="cspBlurFmt(this);cspSaveMonth('${sq}',${r.i},'recRec',parseBR(this.value))"
                   style="border-color:${isColor}30"/></td>
-            <td><input class="csp-month-in" type="number" min="0" placeholder="0"
-                  value="${r.recPon||''}"
-                  oninput="cspSaveMonth('${sq}',${r.i},'recPon',+this.value)"
+            <td><input class="csp-month-in" type="text" inputmode="decimal" placeholder="0,00"
+                  value="${r.recPon>0?fmtBR(r.recPon):''}"
+                  oninput="cspSaveMonth('${sq}',${r.i},'recPon',parseBR(this.value))"
+                  onblur="cspBlurFmt(this);cspSaveMonth('${sq}',${r.i},'recPon',parseBR(this.value))"
                   style="border-color:${isColor}30"/></td>
             ${r.total>0?`<td style="text-align:right"><strong>${fmt(r.total)}</strong></td>`:'<td style="color:#9CA3AF;text-align:right">—</td>'}
             ${pctCell(r.cspTot)}
@@ -2017,7 +2055,7 @@ function renderCspISaaS(isColor, panel) {
   <div class="csp-fin">
     <div class="csp-fin-group">
       <div class="csp-fin-lbl">Faturamento Bruto</div>
-      <input class="csp-fin-in" id="csp-bruto" type="number" min="0" placeholder="0" value="${data.bruto||''}" oninput="cspUpdateFin()" style="border-color:${isColor}40"/>
+      <input class="csp-fin-in" id="csp-bruto" type="text" inputmode="decimal" placeholder="0,00" value="${data.bruto>0?fmtBR(data.bruto):''}" oninput="cspUpdateFin()" onblur="cspBlurFmt(this);cspUpdateFin()" style="border-color:${isColor}40"/>
     </div>
     <div class="csp-fin-group">
       <div class="csp-fin-lbl">Royalties (%)</div>
@@ -2043,7 +2081,7 @@ function renderCspISaaS(isColor, panel) {
     <div class="csp-add-group"><div class="csp-add-lbl">Nome</div><input class="csp-add-in" id="csp-new-nome" placeholder="Nome completo" style="min-width:140px"/></div>
     <div class="csp-add-group"><div class="csp-add-lbl">Função</div><select class="csp-add-in" id="csp-new-func">${funcs.map(f=>`<option>${f}</option>`).join('')}</select></div>
     <div class="csp-add-group"><div class="csp-add-lbl">Projetos</div><input class="csp-add-in" id="csp-new-proj" type="number" min="0" placeholder="0" style="width:70px"/></div>
-    <div class="csp-add-group"><div class="csp-add-lbl">Remuneração (R$)</div><input class="csp-add-in" id="csp-new-rem" type="number" min="0" placeholder="0" style="width:120px"/></div>
+    <div class="csp-add-group"><div class="csp-add-lbl">Remuneração (R$)</div><input class="csp-add-in" id="csp-new-rem" type="text" inputmode="decimal" placeholder="3.500,00" style="width:130px" onblur="cspBlurFmt(this)"/></div>
     <button class="btn btn-v4" onclick="cspAddPessoa()" style="height:32px;white-space:nowrap">+ Adicionar</button>
   </div>
   <div class="tcard csp-team-tbl">
@@ -2077,8 +2115,8 @@ function cspSaveMonth(sq, mi, field, val) {
 function cspUpdateFin() {
   const sq = CSP_ACTIVE_SQ;
   const data = cspGetSquad(sq);
-  data.bruto = Number(document.getElementById('csp-bruto')?.value) || 0;
-  data.royalties = Number(document.getElementById('csp-roy')?.value) ?? 15;
+  data.bruto = parseBR(document.getElementById('csp-bruto')?.value);
+  data.royalties = parseFloat(document.getElementById('csp-roy')?.value) || 15;
   cspSetSquad(sq, data);
   renderCspSquad();
 }
@@ -2087,7 +2125,7 @@ function cspAddPessoa() {
   const nome = document.getElementById('csp-new-nome')?.value.trim();
   const func = document.getElementById('csp-new-func')?.value;
   const proj = Number(document.getElementById('csp-new-proj')?.value) || 0;
-  const rem  = Number(document.getElementById('csp-new-rem')?.value) || 0;
+  const rem  = parseBR(document.getElementById('csp-new-rem')?.value);
   if (!nome) { alert('Informe o nome da pessoa.'); return; }
   const sq = CSP_ACTIVE_SQ;
   const data = cspGetSquad(sq);
